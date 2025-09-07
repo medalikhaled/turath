@@ -1,5 +1,5 @@
 import { ComponentShowcase } from "@/components/examples/component-showcase"
 
-export default function Home() {
+export default function ShowcasePage() {
   return <ComponentShowcase />
 }

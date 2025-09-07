@@ -13,14 +13,26 @@
   - Install Convex and initialize backend configuration
   - _Requirements: 10.1, 10.2, 10.4_
 
-- [ ] 2. Create core UI components and layout system
+- [x] 2. Create core UI components and layout system
+
+
+
+
+
+
   - Implement base Shadcn components (Button, Card, Modal, Form inputs)
   - Create responsive navigation header with Arabic logo and profile dropdown
   - Build reusable layout components for student and admin sections
   - Implement loading states and skeleton components
   - _Requirements: 10.1, 10.4, 11.3_
 
-- [ ] 3. Set up Convex backend schema and basic functions
+- [x] 3. Set up Convex backend schema and basic functions
+
+
+
+
+
+
   - Define Convex database schema for students, courses, meetings, lessons, news, and files
   - Create database indexes for efficient querying
   - Implement basic CRUD functions for each data model
