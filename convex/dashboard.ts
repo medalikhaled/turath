@@ -226,10 +226,9 @@ export const getAdminDashboard = query({
     // Get today's meetings
     const todaysMeetings = await ctx.db
       .query("meetings")
-      .withIndex("by_scheduled_time")
+      .withIndex("by_active", (q) => q.eq("isActive", true))
       .filter((q) => 
         q.and(
-          q.eq(q.field("isActive"), true),
           q.gte(q.field("scheduledTime"), startOfToday),
           q.lt(q.field("scheduledTime"), endOfToday)
         )
@@ -240,10 +239,9 @@ export const getAdminDashboard = query({
     const nextWeek = now + (7 * 24 * 60 * 60 * 1000);
     const upcomingMeetings = await ctx.db
       .query("meetings")
-      .withIndex("by_scheduled_time")
+      .withIndex("by_active", (q) => q.eq("isActive", true))
       .filter((q) => 
         q.and(
-          q.eq(q.field("isActive"), true),
           q.gt(q.field("scheduledTime"), now),
           q.lte(q.field("scheduledTime"), nextWeek)
         )

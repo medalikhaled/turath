@@ -8,11 +8,11 @@ export const runSeed = mutation({
       .query("students")
       .withIndex("by_clerk_id", (q) => q.eq("clerkId", "mock_student_id"))
       .first();
-    
+
     if (existingStudent) {
       return { message: "Test data already exists", studentId: existingStudent._id };
     }
-    
+
     // Create test data inline (copied from seed.ts)
     // Create a test student
     const studentId = await ctx.db.insert("students", {
@@ -58,8 +58,8 @@ export const runSeed = mutation({
       createdBy: studentId,
     });
 
-    return { 
-      message: "Test data created successfully", 
+    return {
+      message: "Test data created successfully",
       studentId,
       courses: [course1Id, course2Id],
       meetings: [],

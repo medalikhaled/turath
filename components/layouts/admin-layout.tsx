@@ -81,8 +81,8 @@ export function AdminLayout({
       
       <div className="flex">
         {/* Desktop Sidebar */}
-        <aside className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-16 lg:z-40">
-          <div className="flex-1 flex flex-col min-h-0 border-r bg-card">
+        <aside className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:top-16 lg:bottom-0 lg:right-0 lg:z-40">
+          <div className="flex-1 flex flex-col min-h-0 border-l bg-card">
             <div className="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto">
               <nav className="mt-5 flex-1 px-2 space-y-1">
                 {sidebarItems.map((item) => {
@@ -113,10 +113,10 @@ export function AdminLayout({
 
         {/* Mobile Sidebar Overlay */}
         {isSidebarOpen && (
-          <div className="lg:hidden fixed inset-0 z-40 flex">
+          <div className="lg:hidden fixed inset-0 z-40 flex justify-end">
             <div className="fixed inset-0 bg-black/50" onClick={() => setIsSidebarOpen(false)} />
-            <div className="relative flex-1 flex flex-col max-w-xs w-full bg-card">
-              <div className="absolute top-0 right-0 -mr-12 pt-2">
+            <div className="relative flex flex-col max-w-xs w-full bg-card">
+              <div className="absolute top-0 left-0 -ml-12 pt-2">
                 <Button
                   variant="ghost"
                   size="icon"
@@ -157,7 +157,7 @@ export function AdminLayout({
         )}
 
         {/* Mobile Sidebar Toggle */}
-        <div className="lg:hidden fixed bottom-4 left-4 z-50">
+        <div className="lg:hidden fixed bottom-4 right-4 z-50">
           <Button
             size="icon"
             onClick={() => setIsSidebarOpen(true)}
@@ -169,7 +169,7 @@ export function AdminLayout({
 
         {/* Main Content */}
         <main className={cn(
-          "flex-1 lg:ml-64",
+          "flex-1 lg:mr-64",
           "container mx-auto px-4 py-6",
           className
         )}>

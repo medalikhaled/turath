@@ -65,7 +65,9 @@
   - Add proper error handling for missing content
   - _Requirements: 3.1, 3.2, 3.3, 3.4_
 
-- [ ] 6. Create news and announcements system
+- [x] 6. Create news and announcements system
+
+
 
 
 
@@ -83,14 +85,22 @@
   - Create responsive modal design for mobile devices
   - _Requirements: 5.1, 5.2_
 
-- [ ] 8. Implement admin dashboard foundation
+- [x] 8. Implement admin dashboard foundation
+
+
+
+
+
+
   - Create admin layout with navigation sidebar
   - Build admin dashboard overview with statistics display
   - Implement quick action buttons for common admin tasks
   - Add recent activity feed for system monitoring
   - _Requirements: 6.1, 7.1, 8.1, 9.1_
 
-- [ ] 9. Create Google Meet management system
+- [-] 9. Create Google Meet management system
+
+
   - Build meeting creation and editing forms
   - Implement Google Meet link validation and formatting
   - Create meeting password management functionality
