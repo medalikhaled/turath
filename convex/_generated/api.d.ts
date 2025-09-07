@@ -20,6 +20,8 @@ import type * as files from "../files.js";
 import type * as lessons from "../lessons.js";
 import type * as meetings from "../meetings.js";
 import type * as news from "../news.js";
+import type * as seed from "../seed.js";
+import type * as seedRunner from "../seedRunner.js";
 import type * as students from "../students.js";
 import type * as utils from "../utils.js";
 
@@ -39,6 +41,8 @@ declare const fullApi: ApiFromModules<{
   lessons: typeof lessons;
   meetings: typeof meetings;
   news: typeof news;
+  seed: typeof seed;
+  seedRunner: typeof seedRunner;
   students: typeof students;
   utils: typeof utils;
 }>;

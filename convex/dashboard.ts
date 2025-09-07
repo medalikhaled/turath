@@ -5,7 +5,116 @@ import { query } from "./_generated/server";
 export const getStudentDashboard = query({
   args: { studentId: v.id("students") },
   handler: async (ctx, args) => {
-    const student = await ctx.db.get(args.studentId);
+    // For mock data, try to find student by clerkId if direct ID lookup fails
+    let student = await ctx.db.get(args.studentId);
+    
+    if (!student && args.studentId === "mock_student_id") {
+      // Try to find by clerkId for mock data
+      student = await ctx.db
+        .query("students")
+        .withIndex("by_clerk_id", (q) => q.eq("clerkId", "mock_student_id"))
+        .first();
+    }
+    
+    if (!student) return null;
+    
+    const now = Date.now();
+    
+    // Get current/next meeting
+    let currentMeeting = null;
+    let nextLesson = null;
+    let earliestTime = Infinity;
+    
+    // Check all student's courses for upcoming lessons and meetings
+    for (const courseId of student.courses) {
+      // Get next lesson for this course
+      const lessons = await ctx.db
+        .query("lessons")
+        .withIndex("by_course_and_time", (q) => 
+          q.eq("courseId", courseId).gt("scheduledTime", now)
+        )
+        .first();
+      
+      if (lessons && lessons.scheduledTime < earliestTime) {
+        earliestTime = lessons.scheduledTime;
+        nextLesson = lessons;
+        
+        // Get associated meeting if exists
+        if (lessons.meetingId) {
+          currentMeeting = await ctx.db.get(lessons.meetingId);
+        }
+      }
+    }
+    
+    // Get weekly schedule
+    const startOfWeek = now - (now % (7 * 24 * 60 * 60 * 1000));
+    const endOfWeek = startOfWeek + (7 * 24 * 60 * 60 * 1000);
+    
+    const weeklyLessons = [];
+    for (const courseId of student.courses) {
+      const courseLessons = await ctx.db
+        .query("lessons")
+        .withIndex("by_course_and_time", (q) => 
+          q.eq("courseId", courseId)
+            .gte("scheduledTime", startOfWeek)
+            .lte("scheduledTime", endOfWeek)
+        )
+        .collect();
+      
+      // Get course details for each lesson
+      const course = await ctx.db.get(courseId);
+      const lessonsWithCourse = courseLessons.map(lesson => ({
+        ...lesson,
+        course,
+      }));
+      
+      weeklyLessons.push(...lessonsWithCourse);
+    }
+    
+    // Sort weekly lessons by time
+    weeklyLessons.sort((a, b) => a.scheduledTime - b.scheduledTime);
+    
+    // Get recent news
+    const recentNews = await ctx.db
+      .query("news")
+      .withIndex("by_published", (q) => 
+        q.eq("isPublished", true).lt("publishedAt", now)
+      )
+      .order("desc")
+      .take(5);
+    
+    // Get news with attachments
+    const newsWithAttachments = await Promise.all(
+      recentNews.map(async (news) => {
+        const attachments = await Promise.all(
+          news.attachments.map(fileId => ctx.db.get(fileId))
+        );
+        return {
+          ...news,
+          attachments: attachments.filter(file => file !== null),
+        };
+      })
+    );
+    
+    return {
+      student,
+      currentMeeting,
+      nextLesson,
+      weeklySchedule: weeklyLessons,
+      recentNews: newsWithAttachments,
+    };
+  },
+});
+
+// Get student dashboard by clerkId (for mock data)
+export const getStudentDashboardByClerkId = query({
+  args: { clerkId: v.string() },
+  handler: async (ctx, args) => {
+    const student = await ctx.db
+      .query("students")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
+      .first();
+    
     if (!student) return null;
     
     const now = Date.now();

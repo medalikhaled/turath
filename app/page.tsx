@@ -1,5 +1,7 @@
-import { ComponentShowcase } from "@/components/examples/component-showcase"
+import { redirect } from "next/navigation"
 
 export default function Home() {
-  return <ComponentShowcase />
+  // For now, redirect to student dashboard
+  // This will be updated when authentication is implemented
+  redirect("/dashboard")
 }

@@ -236,3 +236,116 @@ export function PageLoading({ message = "جاري التحميل..." }: { messag
     </div>
   )
 }
+
+// Student Dashboard Loading Skeleton
+export function StudentDashboardSkeleton() {
+  return (
+    <div className="space-y-6">
+      {/* Welcome Section */}
+      <div className="text-center py-4 space-y-2">
+        <Skeleton className="h-8 w-1/3 mx-auto" />
+        <Skeleton className="h-4 w-1/2 mx-auto" />
+      </div>
+
+      {/* Current Lesson Card */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <Skeleton className="h-6 w-1/4" />
+            <Skeleton className="h-6 w-16" />
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Skeleton className="h-5 w-3/4" />
+            <Skeleton className="h-4 w-1/2" />
+          </div>
+          <div className="space-y-3">
+            <div className="p-3 bg-muted rounded-lg">
+              <Skeleton className="h-4 w-1/4 mb-2" />
+              <Skeleton className="h-4 w-full" />
+            </div>
+            <Skeleton className="h-12 w-full" />
+          </div>
+          <div className="p-4 bg-primary/10 rounded-lg">
+            <Skeleton className="h-4 w-1/4 mb-2" />
+            <div className="grid grid-cols-4 gap-2">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="bg-background rounded p-2">
+                  <Skeleton className="h-6 w-full mb-1" />
+                  <Skeleton className="h-3 w-full" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Weekly Schedule */}
+      <Card>
+        <CardHeader>
+          <Skeleton className="h-6 w-1/4" />
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {Array.from({ length: 3 }).map((_, dayIndex) => (
+            <div key={dayIndex} className="space-y-3">
+              <div className="flex items-center gap-2 pb-2 border-b">
+                <Skeleton className="h-5 w-1/3" />
+                <Skeleton className="h-5 w-12" />
+              </div>
+              <div className="space-y-2">
+                {Array.from({ length: 2 }).map((_, lessonIndex) => (
+                  <div key={lessonIndex} className="flex items-center gap-3 p-3 rounded-lg border">
+                    <Skeleton className="h-10 w-10 rounded-lg" />
+                    <div className="flex-1 space-y-1">
+                      <Skeleton className="h-4 w-3/4" />
+                      <Skeleton className="h-3 w-1/2" />
+                    </div>
+                    <Skeleton className="h-4 w-4" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
+      {/* News Feed */}
+      <Card>
+        <CardHeader>
+          <Skeleton className="h-6 w-1/4" />
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="p-4 rounded-lg border space-y-3">
+              <div className="flex items-start justify-between">
+                <div className="flex-1 space-y-1">
+                  <Skeleton className="h-5 w-3/4" />
+                  <Skeleton className="h-3 w-1/3" />
+                </div>
+                <Skeleton className="h-5 w-12" />
+              </div>
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-5/6" />
+              </div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+// Export all loading states as a namespace
+export const LoadingStates = {
+  Card: CardSkeleton,
+  Dashboard: StudentDashboardSkeleton,
+  Schedule: ScheduleSkeleton,
+  CourseList: CourseListSkeleton,
+  NewsFeed: NewsFeedSkeleton,
+  Table: TableSkeleton,
+  Form: FormSkeleton,
+  Spinner: LoadingSpinner,
+  Page: PageLoading,
+}

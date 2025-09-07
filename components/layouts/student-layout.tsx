@@ -25,7 +25,7 @@ export function StudentLayout({
         onSignOut={onSignOut}
       />
       <main className={cn(
-        "container mx-auto px-4 py-6",
+        "min-h-screen py-6",
         className
       )}>
         {children}
