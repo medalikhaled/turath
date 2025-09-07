@@ -47,6 +47,48 @@ export const getPublishedNews = query({
   },
 });
 
+// Get published news with file details
+export const getPublishedNewsWithFiles = query({
+  args: { limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const limit = args.limit || 50;
+    const news = await ctx.db
+      .query("news")
+      .withIndex("by_published", (q) => 
+        q.eq("isPublished", true).lt("publishedAt", Date.now())
+      )
+      .order("desc")
+      .take(limit);
+    
+    // Get file details for each news item
+    const newsWithFiles = await Promise.all(
+      news.map(async (newsItem) => {
+        const files = await Promise.all(
+          newsItem.attachments.map(fileId => ctx.db.get(fileId))
+        );
+        
+        const filesWithUrls = await Promise.all(
+          files.filter(file => file !== null).map(async (file) => {
+            if (!file) return null;
+            const url = await ctx.storage.getUrl(file.storageId);
+            return {
+              ...file,
+              url,
+            };
+          })
+        );
+        
+        return {
+          ...newsItem,
+          attachments: filesWithUrls.filter(file => file !== null),
+        };
+      })
+    );
+    
+    return newsWithFiles;
+  },
+});
+
 // Get all news (for admin view)
 export const getAllNews = query({
   args: { limit: v.optional(v.number()) },

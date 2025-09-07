@@ -4,7 +4,7 @@ import * as React from "react"
 import { StudentLayout } from "@/components/layouts/student-layout"
 import { CurrentLessonCard } from "./current-lesson-card"
 import { WeeklySchedule } from "./weekly-schedule"
-import { NewsFeed } from "./news-feed"
+import { EnhancedNewsFeed } from "./enhanced-news-feed"
 import { useStudentDashboard } from "@/hooks/use-student-dashboard"
 import { LoadingStates } from "@/components/shared/loading-states"
 import { SeedDataButton } from "./seed-data-button"
@@ -71,8 +71,9 @@ export function StudentDashboard() {
           </div>
 
           {/* News Feed */}
-          <NewsFeed
-            news={data?.recentNews || []}
+          <EnhancedNewsFeed
+            limit={5}
+            showHeader={true}
           />
         </div>
       </div>

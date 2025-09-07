@@ -116,3 +116,68 @@ export const removeStudentFromCourse = mutation({
     return args.courseId;
   },
 });
+
+// Get course details with lessons and resources
+export const getCourseDetails = query({
+  args: { courseId: v.id("courses") },
+  handler: async (ctx, args) => {
+    const course = await ctx.db.get(args.courseId);
+    if (!course) return null;
+    
+    // Get all lessons for this course, ordered by scheduled time (newest first)
+    const lessons = await ctx.db
+      .query("lessons")
+      .withIndex("by_course", (q) => q.eq("courseId", args.courseId))
+      .order("desc")
+      .collect();
+    
+    // Get all resources for all lessons
+    const allResourceIds = lessons.flatMap(lesson => lesson.resources);
+    const resources = await Promise.all(
+      allResourceIds.map(resourceId => ctx.db.get(resourceId))
+    );
+    
+    // Filter out null resources and get their URLs
+    const validResources = resources.filter(resource => resource !== null);
+    const resourcesWithUrls = await Promise.all(
+      validResources.map(async (resource) => {
+        const url = await ctx.storage.getUrl(resource.storageId);
+        return {
+          ...resource,
+          url,
+        };
+      })
+    );
+    
+    // Separate past and upcoming lessons
+    const now = Date.now();
+    const pastLessons = lessons.filter(lesson => lesson.scheduledTime < now);
+    const upcomingLessons = lessons.filter(lesson => lesson.scheduledTime >= now);
+    
+    // Attach resources to lessons
+    const lessonsWithResources = lessons.map(lesson => ({
+      ...lesson,
+      resources: lesson.resources.map(resourceId => 
+        resourcesWithUrls.find(resource => resource._id === resourceId)
+      ).filter(Boolean)
+    }));
+    
+    return {
+      course,
+      lessons: lessonsWithResources,
+      pastLessons: pastLessons.map(lesson => ({
+        ...lesson,
+        resources: lesson.resources.map(resourceId => 
+          resourcesWithUrls.find(resource => resource._id === resourceId)
+        ).filter(Boolean)
+      })),
+      upcomingLessons: upcomingLessons.map(lesson => ({
+        ...lesson,
+        resources: lesson.resources.map(resourceId => 
+          resourcesWithUrls.find(resource => resource._id === resourceId)
+        ).filter(Boolean)
+      })),
+      allResources: resourcesWithUrls,
+    };
+  },
+});
