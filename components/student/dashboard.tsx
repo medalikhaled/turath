@@ -71,11 +71,9 @@ export function StudentDashboard() {
           </div>
 
           {/* News Feed */}
-          <div className="max-w-4xl mx-auto">
-            <NewsFeed
-              news={data?.recentNews || []}
-            />
-          </div>
+          <NewsFeed
+            news={data?.recentNews || []}
+          />
         </div>
       </div>
     </StudentLayout>
