@@ -56,6 +56,17 @@ export const getFileUrl = query({
   },
 });
 
+// Get file URL for download (mutation version for direct download)
+export const getFileDownloadUrl = mutation({
+  args: { id: v.id("files") },
+  handler: async (ctx, args) => {
+    const file = await ctx.db.get(args.id);
+    if (!file) return null;
+    
+    return await ctx.storage.getUrl(file.storageId);
+  },
+});
+
 // Get files by uploader
 export const getFilesByUploader = query({
   args: { uploadedBy: v.id("students") },
