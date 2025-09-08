@@ -209,8 +209,8 @@ export function AdminDashboard() {
         <h2 className="text-xl font-semibold mb-4 arabic-text">الإجراءات السريعة</h2>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           <QuickActionCard
-            title="إنشاء جلسة جديدة"
-            description="إضافة جلسة Google Meet جديدة"
+            title="إدارة الجلسات"
+            description="إنشاء وإدارة جلسات Google Meet"
             icon={VideoIcon}
             href="/admin/meetings"
           />

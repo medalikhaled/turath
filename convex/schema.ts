@@ -34,7 +34,7 @@ export default defineSchema({
     scheduledTime: v.number(),
     duration: v.number(),
     isActive: v.boolean(),
-    createdBy: v.id("students"),
+    createdBy: v.optional(v.id("students")),
   })
     .index("by_course", ["courseId"])
     .index("by_scheduled_time", ["scheduledTime"])
