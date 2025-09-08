@@ -78,14 +78,25 @@
   - Add real-time updates for new announcements
   - _Requirements: 4.1, 4.2, 4.3_
 
-- [ ] 7. Build student profile management
-  - Create profile modal with student information display
-  - Implement sign-out functionality (placeholder for auth integration)
-  - Add profile information editing capabilities
-  - Create responsive modal design for mobile devices
-  - _Requirements: 5.1, 5.2_
+- [ ] 7. Implement basic authentication UI components
+  - Create login page with Better Auth integration
+  - Implement logout functionality in navigation
+  - Add authentication state management
+  - _Requirements: 5.1, 5.2, 5.3_
 
-- [x] 8. Implement admin dashboard foundation
+- [ ] 8. Implement OTP-based admin authentication system
+  - Create hardcoded admin email list in database schema (no UI management)
+  - Build 6-digit OTP generation system with 15-minute expiry
+  - Implement email service integration for sending OTP codes to admin emails
+  - Add admin email verification against hardcoded database list
+  - Create OTP validation and verification system
+  - Implement 24-hour session management for authenticated admin users
+  - Add rate limiting for OTP requests to prevent abuse
+  - Implement shared login page with admin email detection and OTP flow
+  - Add error handling for invalid/expired OTPs with clear messaging
+  - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 6.7, 6.8, 6.9_
+
+- [x] 9. Implement admin dashboard foundation
 
 
 
@@ -145,58 +156,66 @@
   - Create news editing and deletion capabilities
   - _Requirements: 9.1, 9.2, 9.3, 9.4_
 
-- [ ] 13. Implement file handling and storage
+- [ ] 13. Build student account management system
+  - Create student list view with search and filtering
+  - Implement student creation form with validation
+  - Add student editing and password reset functionality
+  - Build student deletion with confirmation and access revocation
+  - _Requirements: 11.1, 11.2, 11.3, 11.4, 11.5_
+
+- [ ] 14. Implement file handling and storage
   - Create secure file upload functionality with Convex storage
   - Build file download system with access control
   - Implement file type and size validation
   - Add file organization and management interface
   - _Requirements: 3.3, 4.2, 8.1, 9.4_
 
-- [ ] 14. Add responsive design and mobile optimization
+- [ ] 15. Add responsive design and mobile optimization
   - Implement responsive layouts for all components
   - Optimize touch interactions for mobile devices
   - Add mobile-specific navigation patterns
   - Test and refine mobile user experience
-  - _Requirements: 11.1, 11.3_
+  - _Requirements: 12.1, 12.3_
 
-- [ ] 15. Create error handling and validation systems
+- [ ] 16. Create error handling and validation systems
   - Implement client-side form validation with Arabic error messages
   - Add network error handling with retry mechanisms
   - Create user-friendly error displays for common issues
   - Build error logging and monitoring capabilities
   - _Requirements: 6.3, 7.3, 8.4, 9.4_
 
-- [ ] 16. Implement real-time features with Convex
+- [ ] 17. Implement real-time features with Convex
   - Add real-time updates for schedule changes
   - Implement live news feed updates
   - Create real-time meeting status updates
   - Add automatic data synchronization across user sessions
   - _Requirements: 2.4, 4.3, 6.1, 7.2_
 
-- [ ] 17. Add performance optimizations
+- [ ] 18. Add performance optimizations
   - Implement code splitting for route-based loading
   - Add image optimization for course materials and attachments
   - Create efficient caching strategies for static content
   - Optimize bundle size and loading performance
-  - _Requirements: 11.2, 11.4_
+  - _Requirements: 12.2, 12.4_
 
-- [ ] 18. Create comprehensive testing suite
+- [ ] 19. Create comprehensive testing suite
   - Write unit tests for all UI components
   - Implement integration tests for Convex functions
   - Add end-to-end tests for critical user workflows
   - Create mobile-specific testing scenarios
-  - _Requirements: 11.3, 11.4_
+  - _Requirements: 12.3, 12.4_
 
-- [ ] 19. Prepare authentication integration points
-  - Create authentication wrapper components for protected routes
-  - Implement user role checking and permission systems
-  - Add authentication state management throughout the application
-  - Prepare Clerk integration points for future implementation
-  - _Requirements: 5.3, 5.4_
+- [ ] 20. Complete authentication system integration
+  - Set up Better Auth configuration with Next.js
+  - Implement protected route middleware
+  - Create user role checking for admin vs student access
+  - Add session management and persistence
+  - Integrate admin enhanced authentication with student auth system
+  - _Requirements: 5.1, 5.4, 5.6, 6.5, 6.7_
 
-- [ ] 20. Final integration and polish
+- [ ] 21. Final integration and polish
   - Integrate all components into cohesive user flows
   - Add final styling touches and theme consistency
   - Implement accessibility features for Arabic content
   - Perform cross-browser testing and bug fixes
-  - _Requirements: 10.1, 10.2, 10.3, 11.3_
+  - _Requirements: 10.1, 10.2, 10.3, 12.3_
