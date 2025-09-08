@@ -186,3 +186,74 @@ export const removeResourceFromLesson = mutation({
     return args.lessonId;
   },
 });
+
+// Check for scheduling conflicts
+export const checkSchedulingConflicts = query({
+  args: {
+    scheduledTime: v.number(),
+    excludeLessonId: v.optional(v.id("lessons")),
+    conflictWindowMs: v.optional(v.number()), // Default to 1 hour
+  },
+  handler: async (ctx, args) => {
+    const conflictWindow = args.conflictWindowMs || (60 * 60 * 1000); // 1 hour default
+    
+    const startTime = args.scheduledTime - conflictWindow;
+    const endTime = args.scheduledTime + conflictWindow;
+    
+    const conflictingLessons = await ctx.db
+      .query("lessons")
+      .withIndex("by_scheduled_time")
+      .filter((q) => 
+        q.and(
+          q.gte(q.field("scheduledTime"), startTime),
+          q.lte(q.field("scheduledTime"), endTime)
+        )
+      )
+      .collect();
+    
+    // Exclude the lesson being edited if provided
+    const filteredConflicts = args.excludeLessonId 
+      ? conflictingLessons.filter(lesson => lesson._id !== args.excludeLessonId)
+      : conflictingLessons;
+    
+    return filteredConflicts;
+  },
+});
+
+// Get lessons with course information for admin dashboard
+export const getLessonsWithCourses = query({
+  args: {
+    startTime: v.optional(v.number()),
+    endTime: v.optional(v.number()),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    let query = ctx.db.query("lessons").withIndex("by_scheduled_time");
+    
+    if (args.startTime && args.endTime) {
+      query = query.filter((q) => 
+        q.and(
+          q.gte(q.field("scheduledTime"), args.startTime!),
+          q.lte(q.field("scheduledTime"), args.endTime!)
+        )
+      );
+    }
+    
+    const lessons = await query
+      .order("desc")
+      .take(args.limit || 100);
+    
+    // Get course information for each lesson
+    const lessonsWithCourses = await Promise.all(
+      lessons.map(async (lesson) => {
+        const course = await ctx.db.get(lesson.courseId);
+        return {
+          ...lesson,
+          course,
+        };
+      })
+    );
+    
+    return lessonsWithCourses;
+  },
+});
