@@ -9,31 +9,32 @@ import { cn } from "@/lib/utils"
 import { useCountdown } from "@/hooks/use-countdown"
 import { toast } from "sonner"
 import { formatArabicDate, toArabicNumerals } from "@/lib/arabic-date"
+import { Id } from "@/convex/_generated/dataModel"
 
 interface CurrentLessonCardProps {
   currentMeeting?: {
-    _id: string
+    _id: Id<"meetings">
     googleMeetLink: string
     password?: string
     scheduledTime: number
     duration: number
-    courseId: string
+    courseId: Id<"courses">
     isActive: boolean
-    createdBy: string
+    createdBy?: Id<"students">
   } | null
   nextLesson?: {
-    _id: string
+    _id: Id<"lessons">
     title: string
     scheduledTime: number
-    courseId: string
-    meetingId?: string
+    courseId: Id<"courses">
+    meetingId?: Id<"meetings">
     description?: string
     recordingUrl?: string
-    resources: string[]
+    resources: Id<"files">[]
     course?: {
-      _id: string
+      _id: Id<"courses">
       _creationTime: number
-      students: string[]
+      students: Id<"students">[]
       name: string
       isActive: boolean
       description: string

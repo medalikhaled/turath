@@ -240,99 +240,109 @@ export function PageLoading({ message = "جاري التحميل..." }: { messag
 // Student Dashboard Loading Skeleton
 export function StudentDashboardSkeleton() {
   return (
-    <div className="space-y-6">
-      {/* Welcome Section */}
-      <div className="text-center py-4 space-y-2">
-        <Skeleton className="h-8 w-1/3 mx-auto" />
-        <Skeleton className="h-4 w-1/2 mx-auto" />
-      </div>
-
-      {/* Current Lesson Card */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <Skeleton className="h-6 w-1/4" />
-            <Skeleton className="h-6 w-16" />
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Skeleton className="h-5 w-3/4" />
-            <Skeleton className="h-4 w-1/2" />
-          </div>
-          <div className="space-y-3">
-            <div className="p-3 bg-muted rounded-lg">
-              <Skeleton className="h-4 w-1/4 mb-2" />
-              <Skeleton className="h-4 w-full" />
-            </div>
-            <Skeleton className="h-12 w-full" />
-          </div>
-          <div className="p-4 bg-primary/10 rounded-lg">
-            <Skeleton className="h-4 w-1/4 mb-2" />
-            <div className="grid grid-cols-4 gap-2">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="bg-background rounded p-2">
-                  <Skeleton className="h-6 w-full mb-1" />
-                  <Skeleton className="h-3 w-full" />
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="space-y-8">
+        {/* Main Content Grid */}
+        <div className="grid gap-8 lg:grid-cols-3">
+          {/* Current Lesson Section - Left Column */}
+          <div className="lg:col-span-1">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <Skeleton className="h-6 w-1/2" />
+                  <Skeleton className="h-6 w-16" />
                 </div>
-              ))}
-            </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Skeleton className="h-5 w-3/4" />
+                  <Skeleton className="h-4 w-1/2" />
+                </div>
+                <div className="space-y-3">
+                  <div className="p-3 bg-muted rounded-lg">
+                    <Skeleton className="h-4 w-1/4 mb-2" />
+                    <Skeleton className="h-4 w-full" />
+                  </div>
+                  <Skeleton className="h-12 w-full" />
+                </div>
+                <div className="p-4 bg-primary/10 rounded-lg">
+                  <Skeleton className="h-4 w-1/4 mb-2" />
+                  <div className="grid grid-cols-2 gap-2">
+                    {Array.from({ length: 4 }).map((_, i) => (
+                      <div key={i} className="bg-background rounded p-2">
+                        <Skeleton className="h-6 w-full mb-1" />
+                        <Skeleton className="h-3 w-full" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
-        </CardContent>
-      </Card>
 
-      {/* Weekly Schedule */}
-      <Card>
-        <CardHeader>
-          <Skeleton className="h-6 w-1/4" />
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {Array.from({ length: 3 }).map((_, dayIndex) => (
-            <div key={dayIndex} className="space-y-3">
-              <div className="flex items-center gap-2 pb-2 border-b">
-                <Skeleton className="h-5 w-1/3" />
-                <Skeleton className="h-5 w-12" />
-              </div>
-              <div className="space-y-2">
-                {Array.from({ length: 2 }).map((_, lessonIndex) => (
-                  <div key={lessonIndex} className="flex items-center gap-3 p-3 rounded-lg border">
-                    <Skeleton className="h-10 w-10 rounded-lg" />
-                    <div className="flex-1 space-y-1">
-                      <Skeleton className="h-4 w-3/4" />
-                      <Skeleton className="h-3 w-1/2" />
+          {/* Weekly Schedule - Right Column */}
+          <div className="lg:col-span-2">
+            <Card>
+              <CardHeader>
+                <Skeleton className="h-6 w-1/4" />
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {Array.from({ length: 3 }).map((_, dayIndex) => (
+                  <div key={dayIndex} className="space-y-3">
+                    <div className="flex items-center gap-2 pb-2 border-b">
+                      <Skeleton className="h-5 w-1/4" />
+                      <Skeleton className="h-5 w-12" />
                     </div>
-                    <Skeleton className="h-4 w-4" />
+                    <div className="grid gap-3 md:grid-cols-2">
+                      {Array.from({ length: 2 }).map((_, lessonIndex) => (
+                        <div key={lessonIndex} className="flex items-center gap-3 p-3 rounded-lg border">
+                          <Skeleton className="h-10 w-10 rounded-lg" />
+                          <div className="flex-1 space-y-1">
+                            <Skeleton className="h-4 w-3/4" />
+                            <Skeleton className="h-3 w-1/2" />
+                          </div>
+                          <Skeleton className="h-4 w-4" />
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 ))}
-              </div>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
 
-      {/* News Feed */}
-      <Card>
-        <CardHeader>
-          <Skeleton className="h-6 w-1/4" />
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="p-4 rounded-lg border space-y-3">
-              <div className="flex items-start justify-between">
-                <div className="flex-1 space-y-1">
-                  <Skeleton className="h-5 w-3/4" />
-                  <Skeleton className="h-3 w-1/3" />
-                </div>
-                <Skeleton className="h-5 w-12" />
-              </div>
-              <div className="space-y-2">
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-5/6" />
-              </div>
+        {/* News Feed - Full Width */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <Skeleton className="h-6 w-1/4" />
+              <Skeleton className="h-8 w-24" />
             </div>
-          ))}
-        </CardContent>
-      </Card>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="p-4 rounded-lg border space-y-3">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1 space-y-1">
+                    <Skeleton className="h-5 w-3/4" />
+                    <Skeleton className="h-3 w-1/3" />
+                  </div>
+                  <Skeleton className="h-5 w-12" />
+                </div>
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-5/6" />
+                </div>
+                <div className="flex gap-2 pt-2">
+                  <Skeleton className="h-6 w-16" />
+                  <Skeleton className="h-6 w-20" />
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }
