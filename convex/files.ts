@@ -9,7 +9,7 @@ export const createFile = mutation({
     name: v.string(),
     type: v.string(),
     size: v.number(),
-    uploadedBy: v.id("students"),
+    uploadedBy: v.id("users"),
   },
   handler: async (ctx, args) => {
     // Validate file type
@@ -69,7 +69,7 @@ export const getFileDownloadUrl = mutation({
 
 // Get files by uploader
 export const getFilesByUploader = query({
-  args: { uploadedBy: v.id("students") },
+  args: { uploadedBy: v.id("users") },
   handler: async (ctx, args) => {
     return await ctx.db
       .query("files")

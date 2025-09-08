@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { Navigation } from "@/components/shared/navigation"
+import { useLogout } from "@/hooks/use-logout"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { 
@@ -70,13 +71,14 @@ export function AdminLayout({
   currentPage = "dashboard"
 }: AdminLayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false)
+  const { logout } = useLogout()
 
   return (
     <div className="min-h-screen bg-background">
       <Navigation 
         userType="admin" 
         userName={userName}
-        onSignOut={onSignOut}
+        onSignOut={onSignOut || logout}
       />
       
       <div className="flex">

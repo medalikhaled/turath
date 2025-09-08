@@ -12,7 +12,7 @@ export const getStudentDashboard = query({
       // Try to find by clerkId for mock data
       student = await ctx.db
         .query("students")
-        .withIndex("by_clerk_id", (q) => q.eq("clerkId", "mock_student_id"))
+        .withIndex("by_user_id", (q) => q.eq("userId", "mock_user_id" as any))
         .first();
     }
     
@@ -106,13 +106,13 @@ export const getStudentDashboard = query({
   },
 });
 
-// Get student dashboard by clerkId (for mock data)
-export const getStudentDashboardByClerkId = query({
-  args: { clerkId: v.string() },
+// Get student dashboard by userId (for auth integration)
+export const getStudentDashboardByUserId = query({
+  args: { userId: v.id("users") },
   handler: async (ctx, args) => {
     const student = await ctx.db
       .query("students")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
+      .withIndex("by_user_id", (q) => q.eq("userId", args.userId))
       .first();
     
     if (!student) return null;

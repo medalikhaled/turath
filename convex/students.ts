@@ -4,31 +4,30 @@ import { mutation, query } from "./_generated/server";
 // Create a new student
 export const createStudent = mutation({
   args: {
-    clerkId: v.string(),
+    userId: v.id("users"),
     name: v.string(),
-    email: v.string(),
     courses: v.optional(v.array(v.id("courses"))),
   },
   handler: async (ctx, args) => {
     const studentId = await ctx.db.insert("students", {
-      clerkId: args.clerkId,
+      userId: args.userId,
       name: args.name,
-      email: args.email,
       enrollmentDate: Date.now(),
       isActive: true,
       courses: args.courses || [],
+      role: "student",
     });
     return studentId;
   },
 });
 
-// Get student by Clerk ID
-export const getStudentByClerkId = query({
-  args: { clerkId: v.string() },
+// Get student by User ID
+export const getStudentByUserId = query({
+  args: { userId: v.id("users") },
   handler: async (ctx, args) => {
     return await ctx.db
       .query("students")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
+      .withIndex("by_user_id", (q) => q.eq("userId", args.userId))
       .first();
   },
 });

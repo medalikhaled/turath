@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Noto_Sans_Arabic } from "next/font/google";
 import { Toaster } from "sonner";
+
 import { ConvexClientProvider } from "@/providers/convex-provider";
 import "./globals.css";
 

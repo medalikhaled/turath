@@ -18,7 +18,7 @@ interface FileAttachment {
     name: string
     type: string
     size: number
-    uploadedBy: Id<"students">
+    uploadedBy: Id<"users">
     uploadedAt: number
     url?: string
 }
@@ -29,7 +29,7 @@ interface NewsItem {
     content: string
     publishedAt: number
     isPublished: boolean
-    createdBy: Id<"students">
+    createdBy: Id<"users">
     attachments: Array<FileAttachment | null>
 }
 

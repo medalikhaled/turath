@@ -40,7 +40,7 @@ interface NewsItem {
   content: string
   publishedAt: number
   isPublished: boolean
-  createdBy: Id<"students">
+  createdBy: Id<"users">
   attachments: FileWithUrl[]
 }
 

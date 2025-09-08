@@ -9,7 +9,7 @@ export const createNews = mutation({
     publishedAt: v.optional(v.number()),
     isPublished: v.optional(v.boolean()),
     attachments: v.optional(v.array(v.id("files"))),
-    createdBy: v.id("students"),
+    createdBy: v.id("users"),
   },
   handler: async (ctx, args) => {
     const newsId = await ctx.db.insert("news", {
@@ -115,7 +115,7 @@ export const getDraftNews = query({
 
 // Get news by creator
 export const getNewsByCreator = query({
-  args: { createdBy: v.id("students") },
+  args: { createdBy: v.id("users") },
   handler: async (ctx, args) => {
     return await ctx.db
       .query("news")

@@ -22,7 +22,10 @@ import type * as meetings from "../meetings.js";
 import type * as news from "../news.js";
 import type * as seed from "../seed.js";
 import type * as seedRunner from "../seedRunner.js";
+import type * as seedWithAuth from "../seedWithAuth.js";
+import type * as simpleSeed from "../simpleSeed.js";
 import type * as students from "../students.js";
+import type * as users from "../users.js";
 import type * as utils from "../utils.js";
 
 /**
@@ -43,7 +46,10 @@ declare const fullApi: ApiFromModules<{
   news: typeof news;
   seed: typeof seed;
   seedRunner: typeof seedRunner;
+  seedWithAuth: typeof seedWithAuth;
+  simpleSeed: typeof simpleSeed;
   students: typeof students;
+  users: typeof users;
   utils: typeof utils;
 }>;
 export declare const api: FilterApi<

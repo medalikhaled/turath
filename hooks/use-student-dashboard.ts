@@ -5,8 +5,8 @@ import { api } from "@/convex/_generated/api"
 
 export function useStudentDashboard() {
   // For now, we'll get the mock student by clerkId until authentication is implemented
-  const data = useQuery(api.dashboard.getStudentDashboardByClerkId, { 
-    clerkId: "mock_student_id" 
+  const data = useQuery(api.dashboard.getStudentDashboard, { 
+    studentId: "mock_student_id" as any
   })
   
   return {

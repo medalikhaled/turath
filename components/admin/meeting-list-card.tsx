@@ -47,7 +47,7 @@ interface MeetingListCardProps {
     scheduledTime: number
     duration: number
     isActive: boolean
-    createdBy?: Id<"students">
+    createdBy?: Id<"users">
   }
   course?: {
     _id: Id<"courses">

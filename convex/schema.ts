@@ -1,18 +1,22 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+import { authTables } from "@convex-dev/auth/server";
 
 export default defineSchema({
-  // Student Model
+  ...authTables,
+  
+  // Student Model - now linked to auth users
   students: defineTable({
-    clerkId: v.string(),
+    userId: v.id("users"), // Link to Convex Auth user
     name: v.string(),
-    email: v.string(),
     enrollmentDate: v.number(),
     isActive: v.boolean(),
     courses: v.array(v.id("courses")),
+    role: v.union(v.literal("student"), v.literal("admin")),
   })
-    .index("by_clerk_id", ["clerkId"])
-    .index("by_active", ["isActive"]),
+    .index("by_user_id", ["userId"])
+    .index("by_active", ["isActive"])
+    .index("by_role", ["role"]),
 
   // Course Model
   courses: defineTable({
@@ -34,7 +38,7 @@ export default defineSchema({
     scheduledTime: v.number(),
     duration: v.number(),
     isActive: v.boolean(),
-    createdBy: v.optional(v.id("students")),
+    createdBy: v.optional(v.id("users")),
   })
     .index("by_course", ["courseId"])
     .index("by_scheduled_time", ["scheduledTime"])
@@ -61,7 +65,7 @@ export default defineSchema({
     publishedAt: v.number(),
     isPublished: v.boolean(),
     attachments: v.array(v.id("files")),
-    createdBy: v.id("students"),
+    createdBy: v.id("users"),
   })
     .index("by_published", ["isPublished", "publishedAt"])
     .index("by_created_by", ["createdBy"]),
@@ -72,7 +76,7 @@ export default defineSchema({
     name: v.string(),
     type: v.string(),
     size: v.number(),
-    uploadedBy: v.id("students"),
+    uploadedBy: v.id("users"),
     uploadedAt: v.number(),
   })
     .index("by_uploaded_by", ["uploadedBy"])

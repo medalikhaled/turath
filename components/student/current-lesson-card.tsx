@@ -20,7 +20,7 @@ interface CurrentLessonCardProps {
     duration: number
     courseId: Id<"courses">
     isActive: boolean
-    createdBy?: Id<"students">
+    createdBy?: Id<"users">
   } | null
   nextLesson?: {
     _id: Id<"lessons">

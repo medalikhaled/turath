@@ -9,7 +9,7 @@ export const createMeeting = mutation({
     password: v.optional(v.string()),
     scheduledTime: v.number(),
     duration: v.number(),
-    createdBy: v.optional(v.id("students")),
+    createdBy: v.optional(v.id("users")),
   },
   handler: async (ctx, args) => {
     const meetingData: any = {
