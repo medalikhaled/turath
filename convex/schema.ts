@@ -81,4 +81,26 @@ export default defineSchema({
   })
     .index("by_uploaded_by", ["uploadedBy"])
     .index("by_uploaded_at", ["uploadedAt"]),
+
+  // Admin OTP Model
+  adminOTPs: defineTable({
+    email: v.string(),
+    otp: v.string(),
+    expiresAt: v.number(),
+    createdAt: v.number(),
+    attempts: v.number(),
+    isUsed: v.boolean(),
+  })
+    .index("by_email", ["email"])
+    .index("by_expires_at", ["expiresAt"]),
+
+  // Admin Sessions Model
+  adminSessions: defineTable({
+    email: v.string(),
+    expiresAt: v.number(),
+    createdAt: v.number(),
+    lastAccessAt: v.number(),
+  })
+    .index("by_email", ["email"])
+    .index("by_expires_at", ["expiresAt"]),
 });

@@ -25,17 +25,19 @@ import { Id } from "@/convex/_generated/dataModel"
 
 interface FileWithUrl {
   _id: Id<"files">
+  _creationTime: number
   storageId: Id<"_storage">
   name: string
   type: string
   size: number
-  uploadedBy: Id<"students">
+  uploadedBy: Id<"users">
   uploadedAt: number
-  url?: string
+  url: string | null
 }
 
 interface NewsItem {
   _id: Id<"news">
+  _creationTime: number
   title: string
   content: string
   publishedAt: number
@@ -258,7 +260,7 @@ export function EnhancedNewsFeed({
         </CardHeader>
       )}
       <CardContent className="space-y-6">
-        {news.map((item, index) => {
+        {news.map((item: NewsItem, index: number) => {
           const isLatest = index === 0
           const attachmentFiles = item.attachments || []
 

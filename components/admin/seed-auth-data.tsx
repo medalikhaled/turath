@@ -14,7 +14,7 @@ export function SeedAuthData() {
     const [isClearing, setIsClearing] = useState(false)
     const [seedResult, setSeedResult] = useState<any>(null)
 
-    const seedWithAuth = useMutation(api.simpleSeed.createSimpleTestData)
+    const seedWithAuth = useMutation(api.simpleSeed.createCompleteTestData)
     const clearData = useMutation(api.simpleSeed.clearAllData)
 
     const handleSeed = async () => {

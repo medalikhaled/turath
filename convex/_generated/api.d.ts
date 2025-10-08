@@ -16,10 +16,12 @@ import type {
 import type * as auth from "../auth.js";
 import type * as courses from "../courses.js";
 import type * as dashboard from "../dashboard.js";
+import type * as demo from "../demo.js";
 import type * as files from "../files.js";
 import type * as lessons from "../lessons.js";
 import type * as meetings from "../meetings.js";
 import type * as news from "../news.js";
+import type * as otp from "../otp.js";
 import type * as seed from "../seed.js";
 import type * as seedRunner from "../seedRunner.js";
 import type * as seedWithAuth from "../seedWithAuth.js";
@@ -40,10 +42,12 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   courses: typeof courses;
   dashboard: typeof dashboard;
+  demo: typeof demo;
   files: typeof files;
   lessons: typeof lessons;
   meetings: typeof meetings;
   news: typeof news;
+  otp: typeof otp;
   seed: typeof seed;
   seedRunner: typeof seedRunner;
   seedWithAuth: typeof seedWithAuth;

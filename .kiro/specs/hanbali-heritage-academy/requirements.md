@@ -56,7 +56,7 @@ The Hanbali Heritage Academy Online Coaching Platform (تراث الحنابلة
 
 #### Acceptance Criteria
 
-1. WHEN a student accesses the platform THEN the system SHALL require authentication using Better Auth or compatible Next.js framework
+1. WHEN a student accesses the platform THEN the system SHALL require authentication using Convex Auth or compatible Next.js framework
 2. WHEN a student signs in THEN the system SHALL authenticate credentials and redirect to the student dashboard
 3. WHEN a student signs out THEN the system SHALL securely end the session and redirect to login page
 4. IF a user is not authenticated THEN the system SHALL redirect to the login page
