@@ -159,7 +159,8 @@ export function CourseContentManager({ courseId, onClose }: CourseContentManager
     const fileInputRef = React.useRef<HTMLInputElement>(null)
 
     const courseDetails = useQuery(api.courses.getCourseDetails, { courseId })
-    const currentUser = useQuery(api.auth.getCurrentUser)
+    // TODO: Replace with new auth system
+    const currentUser = null
     const generateUploadUrl = useMutation(api.files.generateUploadUrl)
     const createFile = useMutation(api.files.createFile)
     const deleteFile = useMutation(api.files.deleteFile)

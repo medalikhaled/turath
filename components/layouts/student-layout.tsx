@@ -2,7 +2,6 @@
 
 import * as React from "react"
 import { Navigation } from "@/components/shared/navigation"
-import { useLogout } from "@/hooks/use-logout"
 import { cn } from "@/lib/utils"
 
 interface StudentLayoutProps {
@@ -18,13 +17,13 @@ export function StudentLayout({
   userName = "الطالب",
   onSignOut 
 }: StudentLayoutProps) {
-  const { logout } = useLogout()
+  
   return (
     <div className="min-h-screen bg-background">
       <Navigation 
         userType="student" 
         userName={userName}
-        onSignOut={onSignOut || logout}
+        // onSignOut={onSignOut || logout}
       />
       <main className={cn(
         "min-h-screen py-6",
