@@ -1,16 +1,23 @@
 "use client"
 
 import * as React from "react"
+import { useRouter } from "next/navigation"
 import { StudentLayout } from "@/components/layouts/student-layout"
 import { CurrentLessonCard } from "./current-lesson-card"
 import { WeeklySchedule } from "./weekly-schedule"
 import { EnhancedNewsFeed } from "./enhanced-news-feed"
+import { CourseSection } from "./course-section"
 import { useStudentDashboard } from "@/hooks/use-student-dashboard"
 import { LoadingStates } from "@/components/shared/loading-states"
 import { SeedDataButton } from "./seed-data-button"
 
 export function StudentDashboard() {
-  const { data, isLoading, error } = useStudentDashboard()
+  const router = useRouter()
+  const { data, isLoading, error, retry } = useStudentDashboard()
+
+  const handleCourseClick = (courseId: string) => {
+    router.push(`/course/${courseId}`)
+  }
 
   if (isLoading) {
     return (
@@ -39,7 +46,7 @@ export function StudentDashboard() {
   }
 
   return (
-    <StudentLayout userName={data?.student?.name}>
+    <StudentLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="space-y-8">
           {/* Welcome Section */}
@@ -57,8 +64,7 @@ export function StudentDashboard() {
             {/* Current Lesson Section */}
             <div className="lg:col-span-1">
               <CurrentLessonCard
-                //@ts-ignore
-                currentMeeting={data?.currentMeeting}
+                currentMeeting={null}
                 nextLesson={data?.nextLesson}
               />
             </div>
@@ -70,6 +76,17 @@ export function StudentDashboard() {
               />
             </div>
           </div>
+
+          {/* Course Section - Below the main grid */}
+          <CourseSection
+            courses={data?.courses || []}
+            isLoading={isLoading}
+            error={error}
+            onCourseClick={handleCourseClick}
+            onRetry={retry}
+            showHeader={true}
+            maxCourses={6}
+          />
 
           {/* News Feed */}
           <EnhancedNewsFeed

@@ -3,6 +3,12 @@
 import * as React from "react"
 import { useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
+import { 
+  filterCurrentWeekLessons, 
+  getUpcomingLessons,
+  getWeekStart,
+  getWeekEnd 
+} from "@/lib/schedule-validation"
 
 interface DashboardData {
   weeklySchedule: any[]
@@ -37,16 +43,19 @@ export function useStudentDashboard(): DashboardReturn {
     setRetryKey(prev => prev + 1)
   }, [])
   
-  // Calculate time period for weekly schedule
-  const now = Date.now()
-  const startOfWeek = now - (now % (7 * 24 * 60 * 60 * 1000))
-  const endOfWeek = startOfWeek + (7 * 24 * 60 * 60 * 1000)
+  // Calculate time period for weekly schedule using proper week calculation
+  const weekPeriod = React.useMemo(() => {
+    const now = new Date()
+    const startOfWeek = getWeekStart(now).getTime()
+    const endOfWeek = getWeekEnd(now).getTime()
+    return { startOfWeek, endOfWeek }
+  }, []) // Empty dependency array since we want this to be calculated once per component mount
   
   // Use simplified direct queries instead of complex student-based filtering
   // The retryKey will cause the component to re-render and re-execute queries
   const weeklyLessons = useQuery(
     api.dashboard.getAllLessonsForPeriod,
-    mounted && retryKey >= 0 ? { startTime: startOfWeek, endTime: endOfWeek } : "skip"
+    mounted && retryKey >= 0 ? { startTime: weekPeriod.startOfWeek, endTime: weekPeriod.endOfWeek } : "skip"
   )
   
   const courses = useQuery(
@@ -59,13 +68,29 @@ export function useStudentDashboard(): DashboardReturn {
     mounted && retryKey >= 0 ? { limit: 5 } : "skip"
   )
   
-  // Find next lesson from the weekly schedule
-  const nextLesson = React.useMemo(() => {
-    if (!weeklyLessons || weeklyLessons.length === 0) return null
+  // Process lessons with proper filtering and sorting
+  const processedLessons = React.useMemo(() => {
+    if (!weeklyLessons || weeklyLessons.length === 0) return {
+      currentWeekLessons: [],
+      upcomingLessons: [],
+      nextLesson: null
+    }
     
-    const upcomingLessons = weeklyLessons.filter(lesson => lesson.scheduledTime > now)
-    return upcomingLessons.length > 0 ? upcomingLessons[0] : null
-  }, [weeklyLessons, now])
+    // Filter lessons for current week and sort them
+    const currentWeekLessons = filterCurrentWeekLessons(weeklyLessons)
+    
+    // Get upcoming lessons (future lessons only)
+    const upcomingLessons = getUpcomingLessons(weeklyLessons)
+    
+    // Next lesson is the first upcoming lesson
+    const nextLesson = upcomingLessons.length > 0 ? upcomingLessons[0] : null
+    
+    return {
+      currentWeekLessons,
+      upcomingLessons,
+      nextLesson
+    }
+  }, [weeklyLessons])
   
   // Determine loading state
   const isLoading = !mounted || 
@@ -103,20 +128,20 @@ export function useStudentDashboard(): DashboardReturn {
     
     // Determine empty states
     const isEmpty = {
-      lessons: lessonsArray.length === 0,
+      lessons: processedLessons.currentWeekLessons.length === 0,
       courses: coursesArray.length === 0,
       news: newsArray.length === 0,
-      all: lessonsArray.length === 0 && coursesArray.length === 0 && newsArray.length === 0
+      all: processedLessons.currentWeekLessons.length === 0 && coursesArray.length === 0 && newsArray.length === 0
     }
     
     return {
-      weeklySchedule: lessonsArray,
+      weeklySchedule: processedLessons.currentWeekLessons,
       courses: coursesArray,
       recentNews: newsArray,
-      nextLesson,
+      nextLesson: processedLessons.nextLesson,
       isEmpty
     }
-  }, [weeklyLessons, courses, recentNews, nextLesson, isLoading, error])
+  }, [weeklyLessons, courses, recentNews, processedLessons, isLoading, error])
   
   return {
     data,

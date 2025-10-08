@@ -19,6 +19,11 @@ import {
     XIcon
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { 
+    validateSchedule, 
+    ScheduleValidationResult,
+    detectTimeConflicts 
+} from "@/lib/schedule-validation"
 
 interface Lesson {
     _id: Id<"lessons">
@@ -65,6 +70,11 @@ export function LessonForm({
     const [scheduledTime, setScheduledTime] = React.useState("")
     const [isSubmitting, setIsSubmitting] = React.useState(false)
     const [isClient, setIsClient] = React.useState(false)
+    const [validationResult, setValidationResult] = React.useState<ScheduleValidationResult>({
+        isValid: true,
+        errors: [],
+        warnings: []
+    })
 
     React.useEffect(() => {
         setIsClient(true)
@@ -104,23 +114,68 @@ export function LessonForm({
         return dateTime.getTime()
     }
 
-    const checkForConflicts = () => {
+    // Memoize the lesson data to prevent unnecessary re-renders
+    const lessonData = React.useMemo(() => 
+        existingLessons.map(lesson => ({
+            _id: lesson._id,
+            scheduledTime: lesson.scheduledTime,
+            title: lesson.title
+        })), [existingLessons]
+    )
+
+    // Real-time validation effect
+    React.useEffect(() => {
+        if (!scheduledDate || !scheduledTime) {
+            setValidationResult({
+                isValid: true,
+                errors: [],
+                warnings: []
+            })
+            return
+        }
+
+        const result = validateSchedule(
+            scheduledDate,
+            scheduledTime,
+            lessonData,
+            lessonId || undefined
+        )
+
+        setValidationResult(result)
+    }, [scheduledDate, scheduledTime, lessonData, lessonId])
+
+    const checkForConflicts = React.useCallback(() => {
         const dateTime = getScheduledDateTime()
         if (!dateTime) return []
 
-        return existingLessons.filter(lesson => {
-            if (lessonId && lesson._id === lessonId) return false
-            return Math.abs(lesson.scheduledTime - dateTime) < (60 * 60 * 1000) // Within 1 hour
+        return detectTimeConflicts(
+            dateTime,
+            lessonData,
+            lessonId || undefined
+        ).map(conflict => {
+            // Find the original lesson to get the courseId
+            const originalLesson = existingLessons.find(lesson => lesson._id === conflict._id)
+            return {
+                ...conflict,
+                courseId: originalLesson?.courseId
+            }
         })
-    }
+    }, [lessonData, lessonId, existingLessons, scheduledDate, scheduledTime])
 
-    const conflicts = checkForConflicts()
+    const conflicts = React.useMemo(() => checkForConflicts(), [checkForConflicts])
     const hasConflicts = conflicts.length > 0
+    const hasValidationErrors = validationResult.errors.length > 0
+    const hasValidationWarnings = validationResult.warnings.length > 0
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         
         if (!title.trim() || !courseId || !scheduledDate || !scheduledTime) {
+            return
+        }
+
+        // Prevent submission if there are validation errors
+        if (hasValidationErrors) {
             return
         }
 
@@ -237,6 +292,11 @@ export function LessonForm({
                         type="date"
                         value={scheduledDate}
                         onChange={(e) => setScheduledDate(e.target.value)}
+                        className={cn(
+                            hasValidationErrors && validationResult.errors.some(e => e.field === 'scheduledDate' || e.field === 'scheduledDateTime') 
+                                ? "border-red-500 focus:border-red-500" 
+                                : ""
+                        )}
                         required
                     />
                 </div>
@@ -250,10 +310,63 @@ export function LessonForm({
                         type="time"
                         value={scheduledTime}
                         onChange={(e) => setScheduledTime(e.target.value)}
+                        className={cn(
+                            hasValidationErrors && validationResult.errors.some(e => e.field === 'scheduledTime' || e.field === 'scheduledDateTime') 
+                                ? "border-red-500 focus:border-red-500" 
+                                : ""
+                        )}
                         required
                     />
                 </div>
             </div>
+
+            {/* Validation Errors */}
+            {hasValidationErrors && (
+                <Card className="border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20">
+                    <CardHeader className="pb-3">
+                        <CardTitle className="text-red-800 dark:text-red-200 arabic-text flex items-center gap-2">
+                            <AlertTriangleIcon className="h-5 w-5" />
+                            خطأ في التحقق من صحة البيانات
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                        <div className="space-y-2">
+                            {validationResult.errors.map((error, index) => (
+                                <div key={index} className="flex items-start gap-2 p-2 bg-red-100 dark:bg-red-900/40 rounded">
+                                    <AlertTriangleIcon className="h-4 w-4 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
+                                    <p className="text-sm text-red-700 dark:text-red-300 arabic-text">
+                                        {error.message}
+                                    </p>
+                                </div>
+                            ))}
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
+
+            {/* Validation Warnings */}
+            {hasValidationWarnings && !hasValidationErrors && (
+                <Card className="border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-900/20">
+                    <CardHeader className="pb-3">
+                        <CardTitle className="text-yellow-800 dark:text-yellow-200 arabic-text flex items-center gap-2">
+                            <AlertTriangleIcon className="h-5 w-5" />
+                            تحذيرات الجدولة
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                        <div className="space-y-2">
+                            {validationResult.warnings.map((warning, index) => (
+                                <div key={index} className="flex items-start gap-2 p-2 bg-yellow-100 dark:bg-yellow-900/40 rounded">
+                                    <AlertTriangleIcon className="h-4 w-4 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
+                                    <p className="text-sm text-yellow-700 dark:text-yellow-300 arabic-text">
+                                        {warning.message}
+                                    </p>
+                                </div>
+                            ))}
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
 
             {/* Conflict Warning */}
             {hasConflicts && (
@@ -298,7 +411,7 @@ export function LessonForm({
             <div className="flex gap-3 pt-4">
                 <Button
                     type="submit"
-                    disabled={isSubmitting || !title.trim() || !courseId || !scheduledDate || !scheduledTime}
+                    disabled={isSubmitting || !title.trim() || !courseId || !scheduledDate || !scheduledTime || hasValidationErrors}
                     className="flex-1 arabic-text"
                 >
                     {isSubmitting ? (

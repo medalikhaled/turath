@@ -272,11 +272,10 @@
   - Add Next.js Image component optimization for course materials and attachments
   - Configure proper caching headers and strategies for static content
   - Optimize bundle size using Next.js built-in optimizations
+  - remove any potential hydration issues
   - _Requirements: 12.2, 12.4_
 
 - [ ] 20. Create comprehensive testing suite
-  - Set up testing framework (Jest + React Testing Library)
-  - Write unit tests for critical UI components (forms, authentication, file handling)
   - Implement integration tests for authentication flows and core functions
   - Add end-to-end tests for student and admin workflows using Playwright
   - Create mobile-specific testing scenarios for responsive design
