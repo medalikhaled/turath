@@ -207,7 +207,9 @@
   - Add rich text editor for course descriptions
   - _Requirements: 8.1, 8.2, 8.3, 8.4_
 
-- [ ] 13. Create news and announcement management
+- [x] 13. Create news and announcement management
+
+
   - Build rich text editor for news creation
   - Implement file attachment system for announcements
   - Add news scheduling functionality for future publication
@@ -215,34 +217,50 @@
   - _Requirements: 9.1, 9.2, 9.3, 9.4_
 
 - [ ] 14. Build student account management system
-  - Create student list view with search and filtering
-  - Implement student creation form with validation
-  - Add student editing and password reset functionality
-  - Build student deletion with confirmation and access revocation
+  - Create admin page for student management at /admin/students
+  - Build student list view with search and filtering capabilities
+  - Implement student creation form with email, name, and password validation
+  - Add student editing functionality with password reset options
+  - Build student deletion with confirmation dialogs and access revocation
+  - Integrate with existing authentication system for student account management
   - _Requirements: 11.1, 11.2, 11.3, 11.4, 11.5_
 
-- [ ] 15. Implement file handling and storage
+- [x] 14.1. Fix admin access to student routes
+
+  - Ensure admins can access all student pages (/dashboard, /course/*) for monitoring
+  - Add "Student View" navigation option in admin sidebar
+  - Update middleware to allow admin access to student routes
+  - Update StudentProtectedRoute component to allow admin access
+  - Update requireAuth function to allow admins on student routes
+  - Create debug and admin creation utilities for troubleshooting
+  - Test admin access to all student functi
+
+- [x] 15. Implement file handling and storage
+
   - Create secure file upload functionality with Convex storage
   - Build file download system with access control
   - Implement file type and size validation
   - Add file organization and management interface
   - _Requirements: 3.3, 4.2, 8.1, 9.4_
 
-- [ ] 16. Add responsive design and mobile optimization
+- [x] 16. Add responsive design and mobile optimization
+
   - Implement responsive layouts for all components
   - Optimize touch interactions for mobile devices
   - Add mobile-specific navigation patterns
   - Test and refine mobile user experience
   - _Requirements: 12.1, 12.3_
 
-- [ ] 17. Create error handling and validation systems
+- [x] 17. Create error handling and validation systems
+
   - Implement client-side form validation with Arabic error messages
   - Add network error handling with retry mechanisms
   - Create user-friendly error displays for common issues
   - Build error logging and monitoring capabilities
   - _Requirements: 6.3, 7.3, 8.4, 9.4_
 
-- [ ] 18. Implement real-time features with Convex
+- [x] 18. Implement real-time features with Convex
+
   - Add real-time updates for schedule changes
   - Implement live news feed updates
   - Create real-time meeting status updates
@@ -250,22 +268,24 @@
   - _Requirements: 2.4, 4.3, 6.1, 7.2_
 
 - [ ] 19. Add performance optimizations
-  - Implement code splitting for route-based loading
-  - Add image optimization for course materials and attachments
-  - Create efficient caching strategies for static content
-  - Optimize bundle size and loading performance
+  - Implement Next.js dynamic imports for route-based code splitting
+  - Add Next.js Image component optimization for course materials and attachments
+  - Configure proper caching headers and strategies for static content
+  - Optimize bundle size using Next.js built-in optimizations
   - _Requirements: 12.2, 12.4_
 
 - [ ] 20. Create comprehensive testing suite
-  - Write unit tests for all UI components
-  - Implement integration tests for authentication and core functions
-  - Add end-to-end tests for critical user workflows
-  - Create mobile-specific testing scenarios
+  - Set up testing framework (Jest + React Testing Library)
+  - Write unit tests for critical UI components (forms, authentication, file handling)
+  - Implement integration tests for authentication flows and core functions
+  - Add end-to-end tests for student and admin workflows using Playwright
+  - Create mobile-specific testing scenarios for responsive design
   - _Requirements: 12.3, 12.4_
 
 - [ ] 21. Final integration and polish
-  - Integrate all components into cohesive user flows
-  - Add final styling touches and theme consistency
-  - Implement accessibility features for Arabic content
-  - Perform cross-browser testing and bug fixes
+  - Review and test all user flows for consistency
+  - Add final Arabic typography and RTL layout refinements
+  - Implement accessibility features (ARIA labels, keyboard navigation, screen reader support)
+  - Perform cross-browser testing and fix compatibility issues
+  - Add loading states and error boundaries for better UX
   - _Requirements: 10.1, 10.2, 10.3, 12.3_

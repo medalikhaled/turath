@@ -6,12 +6,12 @@ import { api } from "@/convex/_generated/api"
 import { Id } from "@/convex/_generated/dataModel"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { WeeklyCalendar } from "./weekly-calendar"
 import { LessonForm } from "./lesson-form"
+import { useEffect, useMemo } from "react"
 import {
     CalendarIcon,
     PlusIcon,
@@ -24,9 +24,13 @@ import { cn } from "@/lib/utils"
 export function ScheduleManagement() {
     const [currentWeekStart, setCurrentWeekStart] = React.useState<number | null>(null)
     const [isClient, setIsClient] = React.useState(false)
+    const [showCreateDialog, setShowCreateDialog] = React.useState(false)
+    const [editingLesson, setEditingLesson] = React.useState<Id<"lessons"> | null>(null)
+    const [deletingLesson, setDeletingLesson] = React.useState<Id<"lessons"> | null>(null)
+    const [selectedDate, setSelectedDate] = React.useState<Date | null>(null)
 
     // Initialize on client side to avoid hydration mismatch
-    React.useEffect(() => {
+    useEffect(() => {
         const now = new Date()
         const dayOfWeek = now.getDay()
         const startOfWeek = new Date(now)
@@ -36,10 +40,21 @@ export function ScheduleManagement() {
         setIsClient(true)
     }, [])
 
-    const [showCreateDialog, setShowCreateDialog] = React.useState(false)
-    const [editingLesson, setEditingLesson] = React.useState<Id<"lessons"> | null>(null)
-    const [deletingLesson, setDeletingLesson] = React.useState<Id<"lessons"> | null>(null)
-    const [selectedDate, setSelectedDate] = React.useState<Date | null>(null)
+    // Calculate endOfWeek - use a default value when currentWeekStart is null
+    const endOfWeek = useMemo(() => {
+        if (currentWeekStart === null) return 0
+        return currentWeekStart + (7 * 24 * 60 * 60 * 1000) - 1
+    }, [currentWeekStart])
+
+    // Always call hooks - they will handle null/undefined values gracefully
+    const weeklyLessons = useQuery(api.lessons.getWeeklySchedule,
+        currentWeekStart !== null ? {
+            startOfWeek: currentWeekStart,
+            endOfWeek: endOfWeek
+        } : "skip"
+    )
+    const courses = useQuery(api.courses.getActiveCourses)
+    const deleteLesson = useMutation(api.lessons.deleteLesson)
 
     // Don't render until client-side hydration is complete
     if (!isClient || currentWeekStart === null) {
@@ -60,15 +75,6 @@ export function ScheduleManagement() {
             </div>
         )
     }
-
-    const endOfWeek = currentWeekStart + (7 * 24 * 60 * 60 * 1000) - 1
-
-    const weeklyLessons = useQuery(api.lessons.getWeeklySchedule, {
-        startOfWeek: currentWeekStart,
-        endOfWeek: endOfWeek
-    })
-    const courses = useQuery(api.courses.getActiveCourses)
-    const deleteLesson = useMutation(api.lessons.deleteLesson)
 
     const handleCreateSuccess = () => {
         setShowCreateDialog(false)

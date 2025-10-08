@@ -1,6 +1,89 @@
 import { v } from "convex/values";
 import { query } from "./_generated/server";
 
+// Simplified query to get all lessons for a time period
+export const getAllLessonsForPeriod = query({
+  args: { 
+    startTime: v.number(), 
+    endTime: v.number() 
+  },
+  handler: async (ctx, args) => {
+    // Get all lessons within the time period
+    const lessons = await ctx.db
+      .query("lessons")
+      .withIndex("by_scheduled_time")
+      .filter((q) => 
+        q.and(
+          q.gte(q.field("scheduledTime"), args.startTime),
+          q.lte(q.field("scheduledTime"), args.endTime)
+        )
+      )
+      .collect();
+    
+    // Get course details for each lesson
+    const lessonsWithCourse = await Promise.all(
+      lessons.map(async (lesson) => {
+        const course = await ctx.db.get(lesson.courseId);
+        return {
+          ...lesson,
+          course,
+        };
+      })
+    );
+    
+    // Sort lessons by time
+    lessonsWithCourse.sort((a, b) => a.scheduledTime - b.scheduledTime);
+    
+    return lessonsWithCourse;
+  },
+});
+
+// Simplified query to get all active courses
+export const getAllActiveCourses = query({
+  handler: async (ctx) => {
+    // Get all active courses
+    const courses = await ctx.db
+      .query("courses")
+      .withIndex("by_active", (q) => q.eq("isActive", true))
+      .collect();
+    
+    return courses;
+  },
+});
+
+// Simplified query to get all published news
+export const getAllPublishedNews = query({
+  args: { limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    const limit = args.limit || 5;
+    
+    // Get all published news
+    const recentNews = await ctx.db
+      .query("news")
+      .withIndex("by_published", (q) => 
+        q.eq("isPublished", true).lt("publishedAt", now)
+      )
+      .order("desc")
+      .take(limit);
+    
+    // Get news with attachments (same as admin dashboard)
+    const newsWithAttachments = await Promise.all(
+      recentNews.map(async (news) => {
+        const attachments = await Promise.all(
+          news.attachments.map(fileId => ctx.db.get(fileId))
+        );
+        return {
+          ...news,
+          attachments: attachments.filter(file => file !== null),
+        };
+      })
+    );
+    
+    return newsWithAttachments;
+  },
+});
+
 // Get complete student dashboard data
 export const getStudentDashboard = query({
   args: { studentId: v.id("students") },

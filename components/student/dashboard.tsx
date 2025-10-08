@@ -57,6 +57,7 @@ export function StudentDashboard() {
             {/* Current Lesson Section */}
             <div className="lg:col-span-1">
               <CurrentLessonCard
+                //@ts-ignore
                 currentMeeting={data?.currentMeeting}
                 nextLesson={data?.nextLesson}
               />

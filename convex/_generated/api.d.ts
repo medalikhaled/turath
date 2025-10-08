@@ -26,7 +26,6 @@ import type * as news from "../news.js";
 import type * as otp from "../otp.js";
 import type * as seed from "../seed.js";
 import type * as seedRunner from "../seedRunner.js";
-import type * as simpleSeed from "../simpleSeed.js";
 import type * as studentAuth from "../studentAuth.js";
 import type * as students from "../students.js";
 import type * as utils from "../utils.js";
@@ -53,7 +52,6 @@ declare const fullApi: ApiFromModules<{
   otp: typeof otp;
   seed: typeof seed;
   seedRunner: typeof seedRunner;
-  simpleSeed: typeof simpleSeed;
   studentAuth: typeof studentAuth;
   students: typeof students;
   utils: typeof utils;
