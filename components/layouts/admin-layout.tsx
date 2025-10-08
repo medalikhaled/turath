@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { Navigation } from "@/components/shared/navigation"
+import { useAuthContext } from "@/providers/auth-provider"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { 
@@ -65,18 +66,24 @@ const sidebarItems = [
 export function AdminLayout({ 
   children, 
   className,
-  userName = "المدير",
+  userName,
   onSignOut,
   currentPage = "dashboard"
 }: AdminLayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false)
+  const { user, logout } = useAuthContext()
+  
+  // Use the authenticated user's name if not provided
+  const displayName = userName || user?.name || "المدير"
+  
+  const handleSignOut = onSignOut || logout
 
   return (
     <div className="min-h-screen bg-background">
       <Navigation 
         userType="admin" 
-        userName={userName}
-        // onSignOut={onSignOut || logout}
+        userName={displayName}
+        onSignOut={handleSignOut}
       />
         
       <div className="flex">

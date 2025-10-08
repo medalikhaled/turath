@@ -2,19 +2,17 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { ConvexError } from "./utils";
 
-// Hardcoded admin emails - these should be managed directly in the database
+// Hardcoded admin email list - these are the only emails that can receive OTP
 const ADMIN_EMAILS = [
-  "medalikhaled331@gmail.com",
-  "admin@hanbaliacademy.com",
+  "medalikhaled331@gmail.com"
 ];
 
-// OTP configuration
+// Rate limiting: max 3 OTP requests per email per hour
+const MAX_OTP_REQUESTS_PER_HOUR = 3;
 const OTP_EXPIRY_MINUTES = 15;
-const OTP_LENGTH = 6;
-const MAX_OTP_ATTEMPTS = 3;
-const RATE_LIMIT_MINUTES = 5;
+const SESSION_DURATION_HOURS = 24;
 
-// Generate a random 6-digit OTP
+// Generate a 6-digit OTP
 function generateOTP(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
@@ -23,33 +21,48 @@ function generateOTP(): string {
 export const isAdminEmail = query({
   args: { email: v.string() },
   handler: async (ctx, args) => {
-    return ADMIN_EMAILS.includes(args.email.toLowerCase());
+    const email = args.email.toLowerCase().trim();
+    return {
+      isAdmin: ADMIN_EMAILS.includes(email),
+    };
   },
 });
 
-// Request OTP for admin login
-export const requestAdminOTP = mutation({
+// Generate and store OTP for admin email
+export const generateAdminOTP = mutation({
   args: { email: v.string() },
   handler: async (ctx, args) => {
-    const email = args.email.toLowerCase();
+    const email = args.email.toLowerCase().trim();
 
-    // Check if email is in admin list
+    // Verify email is in admin list
     if (!ADMIN_EMAILS.includes(email)) {
-      throw new ConvexError("البريد الإلكتروني غير مصرح له بالوصول للوحة الإدارة", "UNAUTHORIZED");
+      throw new ConvexError("البريد الإلكتروني غير مصرح له بالوصول للوحة الإدارة", "UNAUTHORIZED_EMAIL");
     }
 
-    // Check rate limiting
-    const recentOTP = await ctx.db
+    // Check rate limiting - count OTP requests in the last hour
+    const oneHourAgo = Date.now() - (60 * 60 * 1000);
+    const recentOTPs = await ctx.db
       .query("adminOTPs")
       .withIndex("by_email", (q) => q.eq("email", email))
-      .filter((q) => q.gt(q.field("createdAt"), Date.now() - (RATE_LIMIT_MINUTES * 60 * 1000)))
-      .first();
+      .filter((q) => q.gte(q.field("createdAt"), oneHourAgo))
+      .collect();
 
-    if (recentOTP) {
-      throw new ConvexError("يرجى الانتظار قبل طلب رمز جديد", "RATE_LIMITED");
+    if (recentOTPs.length >= MAX_OTP_REQUESTS_PER_HOUR) {
+      throw new ConvexError("تم تجاوز الحد الأقصى لطلبات رمز التحقق. يرجى المحاولة بعد ساعة", "RATE_LIMIT_EXCEEDED");
     }
 
-    // Generate OTP
+    // Clean up expired OTPs for this email
+    const expiredOTPs = await ctx.db
+      .query("adminOTPs")
+      .withIndex("by_email", (q) => q.eq("email", email))
+      .filter((q) => q.lt(q.field("expiresAt"), Date.now()))
+      .collect();
+
+    for (const expiredOTP of expiredOTPs) {
+      await ctx.db.delete(expiredOTP._id);
+    }
+
+    // Generate new OTP
     const otp = generateOTP();
     const expiresAt = Date.now() + (OTP_EXPIRY_MINUTES * 60 * 1000);
 
@@ -63,15 +76,12 @@ export const requestAdminOTP = mutation({
       isUsed: false,
     });
 
-    // TODO: Send email with OTP
-    // For now, we'll log it to console (in production, integrate with email service)
-    console.log(`OTP for ${email}: ${otp}`);
-
     return {
       success: true,
-      message: "تم إرسال رمز التحقق إلى بريدك الإلكتروني",
-      // In development, return OTP for testing
-      ...(process.env.NODE_ENV === "development" && { otp }),
+      otpId,
+      otp, // Return OTP for email sending
+      expiresAt,
+      message: `تم إرسال رمز التحقق إلى ${email}`,
     };
   },
 });
@@ -83,73 +93,77 @@ export const verifyAdminOTP = mutation({
     otp: v.string(),
   },
   handler: async (ctx, args) => {
-    const email = args.email.toLowerCase();
+    const email = args.email.toLowerCase().trim();
+    const otpCode = args.otp.trim();
 
-    // Find the most recent unused OTP for this email
-    const otpRecord = await ctx.db
+    // Verify email is in admin list
+    if (!ADMIN_EMAILS.includes(email)) {
+      throw new ConvexError("البريد الإلكتروني غير مصرح له بالوصول للوحة الإدارة", "UNAUTHORIZED_EMAIL");
+    }
+
+    // Find valid OTP for this email
+    const validOTP = await ctx.db
       .query("adminOTPs")
       .withIndex("by_email", (q) => q.eq("email", email))
-      .filter((q) => q.eq(q.field("isUsed"), false))
-      .order("desc")
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("otp"), otpCode),
+          q.gt(q.field("expiresAt"), Date.now()),
+          q.eq(q.field("isUsed"), false)
+        )
+      )
       .first();
 
-    if (!otpRecord) {
-      throw new ConvexError("رمز التحقق غير صالح أو منتهي الصلاحية", "INVALID_OTP");
-    }
+    if (!validOTP) {
+      // Increment attempts for all matching OTPs (to track failed attempts)
+      const allOTPs = await ctx.db
+        .query("adminOTPs")
+        .withIndex("by_email", (q) => q.eq("email", email))
+        .filter((q) =>
+          q.and(
+            q.gt(q.field("expiresAt"), Date.now()),
+            q.eq(q.field("isUsed"), false)
+          )
+        )
+        .collect();
 
-    // Check if OTP is expired
-    if (Date.now() > otpRecord.expiresAt) {
-      await ctx.db.patch(otpRecord._id, { isUsed: true });
-      throw new ConvexError("رمز التحقق منتهي الصلاحية", "EXPIRED_OTP");
-    }
+      for (const otp of allOTPs) {
+        await ctx.db.patch(otp._id, {
+          attempts: otp.attempts + 1,
+        });
+      }
 
-    // Check attempts limit
-    if (otpRecord.attempts >= MAX_OTP_ATTEMPTS) {
-      await ctx.db.patch(otpRecord._id, { isUsed: true });
-      throw new ConvexError("تم تجاوز عدد المحاولات المسموح", "MAX_ATTEMPTS_EXCEEDED");
-    }
-
-    // Verify OTP
-    if (otpRecord.otp !== args.otp) {
-      await ctx.db.patch(otpRecord._id, {
-        attempts: otpRecord.attempts + 1
-      });
-      throw new ConvexError("رمز التحقق غير صحيح", "INVALID_OTP");
+      throw new ConvexError("رمز التحقق غير صحيح أو منتهي الصلاحية", "INVALID_OTP");
     }
 
     // Mark OTP as used
-    await ctx.db.patch(otpRecord._id, { isUsed: true });
+    await ctx.db.patch(validOTP._id, {
+      isUsed: true,
+    });
 
-    // Create or update admin session (24 hours)
-    const sessionExpiresAt = Date.now() + (24 * 60 * 60 * 1000);
-
-    // Check if admin session already exists
-    const existingSession = await ctx.db
+    // Clean up old sessions for this email
+    const oldSessions = await ctx.db
       .query("adminSessions")
       .withIndex("by_email", (q) => q.eq("email", email))
-      .first();
+      .collect();
 
-    let sessionId;
-    if (existingSession) {
-      // Update existing session
-      await ctx.db.patch(existingSession._id, {
-        expiresAt: sessionExpiresAt,
-        lastAccessAt: Date.now(),
-      });
-      sessionId = existingSession._id;
-    } else {
-      // Create new session
-      sessionId = await ctx.db.insert("adminSessions", {
-        email,
-        expiresAt: sessionExpiresAt,
-        createdAt: Date.now(),
-        lastAccessAt: Date.now(),
-      });
+    for (const session of oldSessions) {
+      await ctx.db.delete(session._id);
     }
+
+    // Create new admin session (24 hours)
+    const sessionExpiresAt = Date.now() + (SESSION_DURATION_HOURS * 60 * 60 * 1000);
+    const sessionId = await ctx.db.insert("adminSessions", {
+      email,
+      expiresAt: sessionExpiresAt,
+      createdAt: Date.now(),
+      lastAccessAt: Date.now(),
+    });
 
     return {
       success: true,
       sessionId,
+      email,
       expiresAt: sessionExpiresAt,
       message: "تم تسجيل الدخول بنجاح",
     };
@@ -158,68 +172,100 @@ export const verifyAdminOTP = mutation({
 
 // Validate admin session
 export const validateAdminSession = query({
-  args: { sessionId: v.id("adminSessions") },
-  handler: async (ctx, args) => {
-    const session = await ctx.db.get(args.sessionId);
-
-    if (!session) {
-      return { valid: false, reason: "SESSION_NOT_FOUND" };
-    }
-
-    if (Date.now() > session.expiresAt) {
-      return { valid: false, reason: "SESSION_EXPIRED" };
-    }
-
-    return {
-      valid: true,
-      email: session.email,
-      expiresAt: session.expiresAt,
-    };
-  },
-});
-
-// Get admin session by email
-export const getAdminSessionByEmail = query({
   args: { email: v.string() },
   handler: async (ctx, args) => {
-    const email = args.email.toLowerCase();
+    const email = args.email.toLowerCase().trim();
 
-    const session = await ctx.db
+    // Verify email is in admin list
+    if (!ADMIN_EMAILS.includes(email)) {
+      return { isValid: false, reason: "UNAUTHORIZED_EMAIL" };
+    }
+
+    // Find active session
+    const activeSession = await ctx.db
       .query("adminSessions")
       .withIndex("by_email", (q) => q.eq("email", email))
+      .filter((q) => q.gt(q.field("expiresAt"), Date.now()))
       .first();
 
-    if (!session || Date.now() > session.expiresAt) {
-      return null;
+    if (!activeSession) {
+      return { isValid: false, reason: "NO_ACTIVE_SESSION" };
     }
 
     return {
-      sessionId: session._id,
-      email: session.email,
-      expiresAt: session.expiresAt,
+      isValid: true,
+      session: {
+        id: activeSession._id,
+        email: activeSession.email,
+        expiresAt: activeSession.expiresAt,
+        createdAt: activeSession.createdAt,
+        lastAccessAt: activeSession.lastAccessAt,
+      },
     };
   },
 });
 
-// Logout admin (invalidate session)
-export const logoutAdmin = mutation({
-  args: { sessionId: v.id("adminSessions") },
+// Update admin session last access time
+export const updateAdminSessionAccess = mutation({
+  args: { email: v.string() },
   handler: async (ctx, args) => {
-    await ctx.db.delete(args.sessionId);
-    return { success: true, message: "تم تسجيل الخروج بنجاح" };
+    const email = args.email.toLowerCase().trim();
+
+    // Find active session
+    const activeSession = await ctx.db
+      .query("adminSessions")
+      .withIndex("by_email", (q) => q.eq("email", email))
+      .filter((q) => q.gt(q.field("expiresAt"), Date.now()))
+      .first();
+
+    if (!activeSession) {
+      throw new ConvexError("لا توجد جلسة نشطة", "NO_ACTIVE_SESSION");
+    }
+
+    // Update last access time
+    await ctx.db.patch(activeSession._id, {
+      lastAccessAt: Date.now(),
+    });
+
+    return {
+      success: true,
+      lastAccessAt: Date.now(),
+    };
+  },
+});
+
+// Logout admin (delete session)
+export const logoutAdmin = mutation({
+  args: { email: v.string() },
+  handler: async (ctx, args) => {
+    const email = args.email.toLowerCase().trim();
+
+    // Delete all sessions for this email
+    const sessions = await ctx.db
+      .query("adminSessions")
+      .withIndex("by_email", (q) => q.eq("email", email))
+      .collect();
+
+    for (const session of sessions) {
+      await ctx.db.delete(session._id);
+    }
+
+    return {
+      success: true,
+      message: "تم تسجيل الخروج بنجاح",
+    };
   },
 });
 
 // Clean up expired OTPs and sessions (maintenance function)
-export const cleanupExpiredRecords = mutation({
-  args: {},
+export const cleanupExpiredData = mutation({
   handler: async (ctx) => {
     const now = Date.now();
 
     // Clean up expired OTPs
     const expiredOTPs = await ctx.db
       .query("adminOTPs")
-      .filter((q) => q.lt(q.field("expiresAt"), now))
+      .withIndex("by_expires_at", (q) => q.lt("expiresAt", now))
       .collect();
 
     for (const otp of expiredOTPs) {
@@ -229,7 +275,7 @@ export const cleanupExpiredRecords = mutation({
     // Clean up expired sessions
     const expiredSessions = await ctx.db
       .query("adminSessions")
-      .filter((q) => q.lt(q.field("expiresAt"), now))
+      .withIndex("by_expires_at", (q) => q.lt("expiresAt", now))
       .collect();
 
     for (const session of expiredSessions) {
@@ -237,8 +283,48 @@ export const cleanupExpiredRecords = mutation({
     }
 
     return {
-      deletedOTPs: expiredOTPs.length,
-      deletedSessions: expiredSessions.length,
+      success: true,
+      cleanedOTPs: expiredOTPs.length,
+      cleanedSessions: expiredSessions.length,
+    };
+  },
+});
+
+// Get admin email list (for debugging/admin purposes)
+export const getAdminEmails = query({
+  handler: async () => {
+    return {
+      emails: ADMIN_EMAILS,
+      count: ADMIN_EMAILS.length,
+    };
+  },
+});
+
+// Get OTP statistics for an email (for debugging)
+export const getOTPStats = query({
+  args: { email: v.string() },
+  handler: async (ctx, args) => {
+    const email = args.email.toLowerCase().trim();
+
+    const allOTPs = await ctx.db
+      .query("adminOTPs")
+      .withIndex("by_email", (q) => q.eq("email", email))
+      .collect();
+
+    const activeOTPs = allOTPs.filter(otp => otp.expiresAt > Date.now() && !otp.isUsed);
+    const expiredOTPs = allOTPs.filter(otp => otp.expiresAt <= Date.now());
+    const usedOTPs = allOTPs.filter(otp => otp.isUsed);
+
+    const oneHourAgo = Date.now() - (60 * 60 * 1000);
+    const recentOTPs = allOTPs.filter(otp => otp.createdAt >= oneHourAgo);
+
+    return {
+      total: allOTPs.length,
+      active: activeOTPs.length,
+      expired: expiredOTPs.length,
+      used: usedOTPs.length,
+      recentRequests: recentOTPs.length,
+      canRequestNew: recentOTPs.length < MAX_OTP_REQUESTS_PER_HOUR,
     };
   },
 });

@@ -90,32 +90,62 @@
   - Clear any Convex Auth-specific database schemas or functions
   - _Requirements: 5.1, 6.1_
 
-- [ ] 8. Implement unified authentication system with basic auth and OTP
-  - [ ] 8.1 Create basic authentication infrastructure
+- [x] 8. Implement unified authentication system with basic auth and OTP
+
+
+
+
+
+  - [x] 8.1 Create basic authentication infrastructure
+
+
+
     - Implement JWT-based session management using existing database models
     - Create authentication middleware for protected routes
     - Build basic login/logout functionality with session persistence
     - Add user role checking (student vs admin) using existing user schema
     - _Requirements: 5.1, 5.2, 5.3, 5.4_
   
-  - [ ] 8.2 Implement student authentication
+
+
+  - [x] 8.2 Implement student authentication
+
+
+
+
+
     - Create student login with email/password using existing student model
     - Implement secure password hashing and validation
     - Add student session management and protected route access
     - Build logout functionality with proper session cleanup
+
+
     - _Requirements: 5.1, 5.2, 5.3, 5.6_
   
-  - [ ] 8.3 Implement admin OTP authentication system
+  - [x] 8.3 Implement admin OTP authentication system
+
+
+
+
+
     - Create hardcoded admin email list in existing database schema
     - Build 6-digit OTP generation system with 15-minute expiry
     - Implement email service integration for sending OTP codes
     - Add admin email verification against database admin list
     - Create OTP validation and verification system
+
+
     - Implement 24-hour session management for authenticated admins
     - Add rate limiting for OTP requests to prevent abuse
     - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 6.7_
   
-  - [ ] 8.4 Create unified login interface
+  - [x] 8.4 Create unified login interface
+
+
+
+
+
+
     - Build shared login page with automatic admin email detection
     - Implement student email/password form
     - Add admin email input with OTP flow trigger

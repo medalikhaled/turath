@@ -13,7 +13,9 @@ import type {
   FilterApi,
   FunctionReference,
 } from "convex/server";
+import type * as auth from "../auth.js";
 import type * as courses from "../courses.js";
+import type * as createAdmin from "../createAdmin.js";
 import type * as dashboard from "../dashboard.js";
 import type * as demo from "../demo.js";
 import type * as files from "../files.js";
@@ -24,6 +26,7 @@ import type * as otp from "../otp.js";
 import type * as seed from "../seed.js";
 import type * as seedRunner from "../seedRunner.js";
 import type * as simpleSeed from "../simpleSeed.js";
+import type * as studentAuth from "../studentAuth.js";
 import type * as students from "../students.js";
 import type * as utils from "../utils.js";
 
@@ -36,7 +39,9 @@ import type * as utils from "../utils.js";
  * ```
  */
 declare const fullApi: ApiFromModules<{
+  auth: typeof auth;
   courses: typeof courses;
+  createAdmin: typeof createAdmin;
   dashboard: typeof dashboard;
   demo: typeof demo;
   files: typeof files;
@@ -47,6 +52,7 @@ declare const fullApi: ApiFromModules<{
   seed: typeof seed;
   seedRunner: typeof seedRunner;
   simpleSeed: typeof simpleSeed;
+  studentAuth: typeof studentAuth;
   students: typeof students;
   utils: typeof utils;
 }>;

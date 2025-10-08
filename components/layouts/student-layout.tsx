@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { Navigation } from "@/components/shared/navigation"
+import { useAuthContext } from "@/providers/auth-provider"
 import { cn } from "@/lib/utils"
 
 interface StudentLayoutProps {
@@ -14,16 +15,22 @@ interface StudentLayoutProps {
 export function StudentLayout({ 
   children, 
   className,
-  userName = "الطالب",
+  userName,
   onSignOut 
 }: StudentLayoutProps) {
+  const { user, logout } = useAuthContext()
+  
+  // Use the authenticated user's name if not provided
+  const displayName = userName || user?.name || "الطالب"
+  
+  const handleSignOut = onSignOut || logout
   
   return (
     <div className="min-h-screen bg-background">
       <Navigation 
         userType="student" 
-        userName={userName}
-        // onSignOut={onSignOut || logout}
+        userName={displayName}
+        onSignOut={handleSignOut}
       />
       <main className={cn(
         "min-h-screen py-6",
