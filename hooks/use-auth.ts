@@ -207,6 +207,11 @@ export function useAuth() {
     }
 
     if (requiredRole && authState.user?.role !== requiredRole) {
+      // Special case: allow admins to access student routes
+      if (requiredRole === 'student' && authState.user?.role === 'admin') {
+        return true;
+      }
+      
       toast.error('غير مصرح لك بالوصول لهذه الصفحة');
       router.push(authState.user?.role === 'admin' ? '/admin/dashboard' : '/dashboard');
       return false;

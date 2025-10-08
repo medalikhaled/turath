@@ -32,6 +32,12 @@ const sidebarItems = [
     href: "/admin/dashboard"
   },
   {
+    id: "student-view",
+    label: "عرض الطلاب",
+    icon: LayoutDashboardIcon,
+    href: "/dashboard"
+  },
+  {
     id: "meetings",
     label: "إدارة الجلسات",
     icon: VideoIcon,

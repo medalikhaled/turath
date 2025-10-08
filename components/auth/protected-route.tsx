@@ -47,11 +47,39 @@ export function ProtectedRoute({
 
 // Convenience components for specific roles
 export function StudentProtectedRoute({ children, fallback }: Omit<ProtectedRouteProps, 'requiredRole'>) {
-  return (
-    <ProtectedRoute requiredRole="student" fallback={fallback}>
-      {children}
-    </ProtectedRoute>
-  );
+  const { isLoading, isAuthenticated, user, requireAuth } = useAuthContext();
+
+  useEffect(() => {
+    if (!isLoading) {
+      // Allow both students and admins to access student routes
+      if (!isAuthenticated) {
+        requireAuth();
+      } else if (user?.role !== 'student' && user?.role !== 'admin') {
+        requireAuth('student'); // This will redirect to appropriate page
+      }
+    }
+  }, [isLoading, isAuthenticated, user, requireAuth]);
+
+  // Show loading spinner while checking authentication
+  if (isLoading) {
+    return (
+      fallback || (
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin text-blue-400 mx-auto mb-4" />
+            <p className="text-white font-arabic">جاري التحقق من الهوية...</p>
+          </div>
+        </div>
+      )
+    );
+  }
+
+  // Allow both students and admins to access student routes
+  if (!isAuthenticated || (user?.role !== 'student' && user?.role !== 'admin')) {
+    return null;
+  }
+
+  return <>{children}</>;
 }
 
 export function AdminProtectedRoute({ children, fallback }: Omit<ProtectedRouteProps, 'requiredRole'>) {

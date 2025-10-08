@@ -44,11 +44,8 @@ export async function middleware(request: NextRequest) {
   }
 
   // Check role-based access
-  if (isStudentRoute && payload.role !== 'student') {
-    // Student route accessed by non-student
-    if (payload.role === 'admin') {
-      return NextResponse.redirect(new URL('/admin/dashboard', request.url));
-    }
+  if (isStudentRoute && payload.role !== 'student' && payload.role !== 'admin') {
+    // Student route accessed by non-student and non-admin
     return NextResponse.redirect(new URL('/login', request.url));
   }
 

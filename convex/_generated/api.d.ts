@@ -16,6 +16,7 @@ import type {
 import type * as auth from "../auth.js";
 import type * as courses from "../courses.js";
 import type * as createAdmin from "../createAdmin.js";
+import type * as createSpecificAdmin from "../createSpecificAdmin.js";
 import type * as dashboard from "../dashboard.js";
 import type * as demo from "../demo.js";
 import type * as files from "../files.js";
@@ -42,6 +43,7 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   courses: typeof courses;
   createAdmin: typeof createAdmin;
+  createSpecificAdmin: typeof createSpecificAdmin;
   dashboard: typeof dashboard;
   demo: typeof demo;
   files: typeof files;
