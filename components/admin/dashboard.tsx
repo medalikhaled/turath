@@ -156,12 +156,12 @@ export function AdminDashboard() {
     )
   }
 
-  const { statistics, todaysMeetings, upcomingMeetings, recentNews, recentActivity } = dashboardData
+  const { statistics, todaysEvents, upcomingEvents, recentNews, recentActivity } = dashboardData
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      {/* <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold arabic-text">لوحة التحكم</h1>
           <p className="text-muted-foreground arabic-text">
@@ -174,10 +174,10 @@ export function AdminDashboard() {
             آخر تحديث: الآن
           </Badge>
         </div>
-      </div>
+      </div> */}
 
       {/* Statistics Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
         <StatCard
           title="إجمالي الطلاب"
           value={statistics.totalStudents}
@@ -191,16 +191,22 @@ export function AdminDashboard() {
           description="المقررات المتاحة"
         />
         <StatCard
-          title="جلسات اليوم"
-          value={statistics.todaysMeetings}
-          icon={VideoIcon}
-          description="الجلسات المجدولة اليوم"
+          title="أحداث اليوم"
+          value={statistics.todaysEvents}
+          icon={CalendarIcon}
+          description="الدروس والجلسات المجدولة اليوم"
         />
         <StatCard
-          title="الملفات المرفوعة"
-          value={statistics.totalFiles}
+          title="الدروس المرتبطة"
+          value={`${statistics.lessonsWithMeetings}/${statistics.totalLessons}`}
+          icon={VideoIcon}
+          description="الدروس المرتبطة بجلسات"
+        />
+        <StatCard
+          title="إجمالي الأحداث"
+          value={statistics.totalLessons + statistics.totalMeetings}
           icon={FileIcon}
-          description={`${formatFileSize(statistics.totalFileSize)} إجمالي`}
+          description={`${statistics.totalLessons} درس، ${statistics.totalMeetings} جلسة`}
         />
       </div>
 
@@ -215,8 +221,8 @@ export function AdminDashboard() {
             href="/admin/meetings"
           />
           <QuickActionCard
-            title="جدولة درس"
-            description="إضافة درس جديد للجدول الأسبوعي"
+            title="جدولة حدث"
+            description="إضافة درس أو جلسة للجدول الأسبوعي"
             icon={CalendarIcon}
             href="/admin/schedule"
           />
@@ -251,37 +257,54 @@ export function AdminDashboard() {
 
       {/* Recent Activity and Upcoming Events */}
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Upcoming Meetings */}
+        {/* Upcoming Events */}
         <Card>
           <CardHeader>
-            <CardTitle className="arabic-text">الجلسات القادمة</CardTitle>
+            <CardTitle className="arabic-text">الأحداث القادمة</CardTitle>
           </CardHeader>
           <CardContent>
-            {upcomingMeetings.length > 0 ? (
+            {upcomingEvents.length > 0 ? (
               <div className="space-y-3">
-                {upcomingMeetings.map((meeting) => (
-                  <div key={meeting._id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                {upcomingEvents.map((event) => (
+                  <div key={`${event.type}-${event._id}`} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                     <div className="flex items-center space-x-3 space-x-reverse">
-                      <div className="p-2 bg-primary/10 rounded-full">
-                        <VideoIcon className="h-4 w-4 text-primary" />
+                      <div className={`p-2 rounded-full ${
+                        event.type === 'lesson' 
+                          ? 'bg-blue-100 dark:bg-blue-900/20' 
+                          : 'bg-purple-100 dark:bg-purple-900/20'
+                      }`}>
+                        {event.type === 'lesson' ? (
+                          <BookOpenIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                        ) : (
+                          <VideoIcon className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                        )}
                       </div>
                       <div>
-                        <p className="font-medium arabic-text">جلسة مباشرة</p>
+                        <p className="font-medium arabic-text">
+                          {event.type === 'lesson' ? (event as any).title : 'جلسة مباشرة'}
+                        </p>
                         <p className="text-sm text-muted-foreground">
-                          {formatArabicDate(meeting.scheduledTime)}
+                          {formatArabicDate(event.scheduledTime)}
                         </p>
                       </div>
                     </div>
-                    <Badge variant="outline" className="arabic-text">
-                      {Math.round(meeting.duration / 60)} دقيقة
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="arabic-text text-xs">
+                        {event.type === 'lesson' ? 'درس' : 'جلسة'}
+                      </Badge>
+                      {event.type === 'meeting' && (
+                        <Badge variant="secondary" className="arabic-text text-xs">
+                          {Math.round((event as any).duration / 60)} دقيقة
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
             ) : (
               <div className="text-center py-6">
-                <VideoIcon className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
-                <p className="text-muted-foreground arabic-text">لا توجد جلسات مجدولة</p>
+                <CalendarIcon className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
+                <p className="text-muted-foreground arabic-text">لا توجد أحداث مجدولة</p>
               </div>
             )}
           </CardContent>

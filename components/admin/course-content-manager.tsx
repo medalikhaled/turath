@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
+import { useAuthContext } from "@/providers/auth-provider"
 
 import {
     UploadIcon,
@@ -159,8 +160,7 @@ export function CourseContentManager({ courseId, onClose }: CourseContentManager
     const fileInputRef = React.useRef<HTMLInputElement>(null)
 
     const courseDetails = useQuery(api.courses.getCourseDetails, { courseId })
-    // TODO: Replace with new auth system
-    const currentUser = null
+    const { user: currentUser, isAuthenticated } = useAuthContext()
     const generateUploadUrl = useMutation(api.files.generateUploadUrl)
     const createFile = useMutation(api.files.createFile)
     const deleteFile = useMutation(api.files.deleteFile)
@@ -239,7 +239,7 @@ export function CourseContentManager({ courseId, onClose }: CourseContentManager
                         const storageId = response.storageId
 
                         // Create file record in database
-                        if (!currentUser) {
+                        if (!currentUser || !isAuthenticated) {
                             throw new Error("User not authenticated")
                         }
 
@@ -248,7 +248,7 @@ export function CourseContentManager({ courseId, onClose }: CourseContentManager
                             name: file.name,
                             type: file.type,
                             size: file.size,
-                            uploadedBy: currentUser.subject as any
+                            uploadedBy: currentUser.id as any
                         })
 
                         setUploads(prev => prev.map(upload =>
@@ -345,7 +345,7 @@ export function CourseContentManager({ courseId, onClose }: CourseContentManager
         setUploads(prev => prev.filter(upload => upload.id !== uploadId))
     }
 
-    if (!courseDetails || !currentUser) {
+    if (!courseDetails || !currentUser || !isAuthenticated) {
         return (
             <div className="space-y-6">
                 <Skeleton className="h-8 w-64" />

@@ -35,7 +35,7 @@ export const createStudentSession = mutation({
         id: student._id,
         email: student.email,
         name: student.name,
-        role: student.role,
+        role: "student",
         courses: student.courses,
       },
     };
@@ -51,17 +51,23 @@ export const validateStudentCredentials = mutation({
   handler: async (ctx, args) => {
     const email = args.email.toLowerCase().trim();
 
-    // Find student by email
-    const student = await ctx.db
-      .query("students")
+    // Find user by email
+    const user = await ctx.db
+      .query("users")
       .withIndex("by_email", (q) => q.eq("email", email))
       .first();
 
-    if (!student) {
+    if (!user || user.role !== "student" || !user.isActive) {
       throw new ConvexError("البريد الإلكتروني أو كلمة المرور غير صحيحة", "INVALID_CREDENTIALS");
     }
 
-    if (!student.isActive) {
+    // Get student profile
+    const student = await ctx.db
+      .query("students")
+      .withIndex("by_user_id", (q) => q.eq("userId", user._id))
+      .first();
+
+    if (!student || !student.isActive) {
       throw new ConvexError("حساب الطالب غير نشط", "STUDENT_INACTIVE");
     }
 
@@ -73,8 +79,8 @@ export const validateStudentCredentials = mutation({
         id: student._id,
         email: student.email,
         name: student.name,
-        role: student.role,
-        hashedPassword: student.password,
+        role: "student",
+        hashedPassword: user.passwordHash,
         courses: student.courses,
       },
     };

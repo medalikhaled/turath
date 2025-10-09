@@ -27,17 +27,10 @@ export async function POST(request: NextRequest) {
         // If it's an admin session, also clean up the OTP session
         if (payload.role === 'admin') {
           try {
-            // Get admin session by email
-            const adminSession = await convex.query(api.otp.getAdminSessionByEmail, {
+            // Logout from OTP system using email
+            await convex.mutation(api.otp.logoutAdmin, {
               email: payload.email,
             });
-
-            if (adminSession) {
-              // Logout from OTP system
-              await convex.mutation(api.otp.logoutAdmin, {
-                sessionId: adminSession.sessionId,
-              });
-            }
           } catch (error) {
             console.error('Error cleaning up admin OTP session:', error);
             // Continue with logout even if OTP cleanup fails

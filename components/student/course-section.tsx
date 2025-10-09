@@ -99,7 +99,7 @@ export function CourseSection({
           <CourseEmptyState />
         ) : (
           <div className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
               {displayedCourses.map((course) => (
                 <CourseCard
                   key={course._id}
@@ -137,18 +137,25 @@ export function CourseSection({
 
 function CourseEmptyState() {
   return (
-    <div className="text-center py-8">
-      <BookOpenIcon className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-      <h3 className="font-semibold arabic-text mb-2">
+    <div className="text-center py-12">
+      <div className="mx-auto w-24 h-24 bg-muted/30 rounded-full flex items-center justify-center mb-6">
+        <BookOpenIcon className="h-12 w-12 text-muted-foreground" />
+      </div>
+      <h3 className="text-lg font-semibold arabic-text mb-3">
         لا توجد دورات مسجلة
       </h3>
-      <p className="text-muted-foreground arabic-text mb-4">
-        لم يتم تسجيلك في أي دورات بعد. تواصل مع الإدارة للتسجيل في الدورات المتاحة.
+      <p className="text-muted-foreground arabic-text mb-6 max-w-md mx-auto leading-relaxed">
+        لم يتم تسجيلك في أي دورات بعد. تواصل مع الإدارة للتسجيل في الدورات المتاحة أو للحصول على معلومات حول الدورات الجديدة.
       </p>
-      <Button variant="outline" className="arabic-text gap-2">
-        <PlusIcon className="h-4 w-4" />
-        تصفح الدورات المتاحة
-      </Button>
+      <div className="space-y-3">
+        <Button variant="outline" className="arabic-text gap-2">
+          <PlusIcon className="h-4 w-4" />
+          تصفح الدورات المتاحة
+        </Button>
+        <p className="text-xs text-muted-foreground arabic-text">
+          أو تواصل مع الإدارة لمزيد من المعلومات
+        </p>
+      </div>
     </div>
   )
 }
@@ -179,21 +186,31 @@ function CourseSectionSkeleton({ showHeader = true }: { showHeader?: boolean }) 
       {showHeader && (
         <CardHeader>
           <div className="flex items-center justify-between">
-            <Skeleton className="h-6 w-24" />
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-5 w-5" />
+              <Skeleton className="h-6 w-16" />
+              <Skeleton className="h-4 w-8" />
+            </div>
             <Skeleton className="h-8 w-8" />
           </div>
         </CardHeader>
       )}
       
       <CardContent>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
-          {[1, 2, 3, 4].map((i) => (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
             <Card key={i} className="cursor-pointer">
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
                   <div className="space-y-2 flex-1">
-                    <Skeleton className="h-5 w-3/4" />
-                    <Skeleton className="h-4 w-1/2" />
+                    <div className="flex items-center gap-2">
+                      <Skeleton className="h-5 w-5" />
+                      <Skeleton className="h-5 w-3/4" />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Skeleton className="h-4 w-4" />
+                      <Skeleton className="h-4 w-1/2" />
+                    </div>
                   </div>
                   <div className="flex flex-col items-end gap-2">
                     <Skeleton className="h-5 w-12" />
@@ -203,15 +220,24 @@ function CourseSectionSkeleton({ showHeader = true }: { showHeader?: boolean }) 
               </CardHeader>
               
               <CardContent className="space-y-4">
-                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-8 w-full" />
                 <div className="bg-muted/50 rounded-lg p-3 space-y-2">
-                  <Skeleton className="h-4 w-24" />
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="h-4 w-4" />
+                    <Skeleton className="h-4 w-20" />
+                  </div>
                   <Skeleton className="h-4 w-3/4" />
-                  <Skeleton className="h-3 w-1/2" />
+                  <div className="flex items-center gap-1">
+                    <Skeleton className="h-3 w-3" />
+                    <Skeleton className="h-3 w-1/2" />
+                  </div>
                 </div>
                 <div className="flex items-center justify-between">
-                  <Skeleton className="h-3 w-20" />
-                  <Skeleton className="h-3 w-16" />
+                  <Skeleton className="h-3 w-24" />
+                  <div className="flex items-center gap-1">
+                    <Skeleton className="h-3 w-3" />
+                    <Skeleton className="h-3 w-12" />
+                  </div>
                 </div>
               </CardContent>
             </Card>

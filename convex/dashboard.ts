@@ -84,121 +84,50 @@ export const getAllPublishedNews = query({
   },
 });
 
-// Get complete student dashboard data
-export const getStudentDashboard = query({
+// Get student dashboard data by student ID (for authenticated users)
+export const getStudentDashboardByStudentId = query({
   args: { studentId: v.id("students") },
   handler: async (ctx, args) => {
-    // For mock data, try to find student by clerkId if direct ID lookup fails
-    let student = await ctx.db.get(args.studentId);
+    // Get student by ID
+    const student = await ctx.db.get(args.studentId);
     
-    if (!student && args.studentId === "mock_student_id") {
-      // Try to find by clerkId for mock data
-      student = await ctx.db
-        .query("students")
-        .withIndex("by_user_id", (q) => q.eq("userId", "mock_user_id" as any))
-        .first();
-    }
+    if (!student || !student.isActive) return null;
     
-    if (!student) return null;
-    
-    const now = Date.now();
-    
-    // Get current/next meeting
-    let currentMeeting = null;
-    let nextLesson = null;
-    let earliestTime = Infinity;
-    
-    // Check all student's courses for upcoming lessons and meetings
-    for (const courseId of student.courses) {
-      // Get next lesson for this course
-      const lessons = await ctx.db
-        .query("lessons")
-        .withIndex("by_course_and_time", (q) => 
-          q.eq("courseId", courseId).gt("scheduledTime", now)
-        )
-        .first();
-      
-      if (lessons && lessons.scheduledTime < earliestTime) {
-        earliestTime = lessons.scheduledTime;
-        nextLesson = lessons;
-        
-        // Get associated meeting if exists
-        if (lessons.meetingId) {
-          currentMeeting = await ctx.db.get(lessons.meetingId);
-        }
-      }
-    }
-    
-    // Get weekly schedule
-    const startOfWeek = now - (now % (7 * 24 * 60 * 60 * 1000));
-    const endOfWeek = startOfWeek + (7 * 24 * 60 * 60 * 1000);
-    
-    const weeklyLessons = [];
-    for (const courseId of student.courses) {
-      const courseLessons = await ctx.db
-        .query("lessons")
-        .withIndex("by_course_and_time", (q) => 
-          q.eq("courseId", courseId)
-            .gte("scheduledTime", startOfWeek)
-            .lte("scheduledTime", endOfWeek)
-        )
-        .collect();
-      
-      // Get course details for each lesson
-      const course = await ctx.db.get(courseId);
-      const lessonsWithCourse = courseLessons.map(lesson => ({
-        ...lesson,
-        course,
-      }));
-      
-      weeklyLessons.push(...lessonsWithCourse);
-    }
-    
-    // Sort weekly lessons by time
-    weeklyLessons.sort((a, b) => a.scheduledTime - b.scheduledTime);
-    
-    // Get recent news
-    const recentNews = await ctx.db
-      .query("news")
-      .withIndex("by_published", (q) => 
-        q.eq("isPublished", true).lt("publishedAt", now)
-      )
-      .order("desc")
-      .take(5);
-    
-    // Get news with attachments
-    const newsWithAttachments = await Promise.all(
-      recentNews.map(async (news) => {
-        const attachments = await Promise.all(
-          news.attachments.map(fileId => ctx.db.get(fileId))
-        );
-        return {
-          ...news,
-          attachments: attachments.filter(file => file !== null),
-        };
-      })
-    );
-    
-    return {
-      student,
-      currentMeeting,
-      nextLesson,
-      weeklySchedule: weeklyLessons,
-      recentNews: newsWithAttachments,
-    };
+    return await getStudentDashboardData(ctx, student);
   },
 });
 
-// Get student dashboard by userId (for auth integration)
+// Get student dashboard data by user ID (for authenticated users with new auth system)
 export const getStudentDashboardByUserId = query({
   args: { userId: v.id("users") },
   handler: async (ctx, args) => {
+    // Get student by user ID
     const student = await ctx.db
       .query("students")
       .withIndex("by_user_id", (q) => q.eq("userId", args.userId))
       .first();
     
-    if (!student) return null;
+    if (!student || !student.isActive) return null;
+    
+    return await getStudentDashboardData(ctx, student);
+  },
+});
+
+// Get complete student dashboard data
+export const getStudentDashboard = query({
+  args: { studentId: v.id("students") },
+  handler: async (ctx, args) => {
+    // Get student by ID
+    const student = await ctx.db.get(args.studentId);
+    
+    if (!student || !student.isActive) return null;
+    
+    return await getStudentDashboardData(ctx, student);
+  },
+});
+
+// Helper function to get student dashboard data
+async function getStudentDashboardData(ctx: any, student: any) {
     
     const now = Date.now();
     
@@ -208,11 +137,15 @@ export const getStudentDashboardByUserId = query({
     let earliestTime = Infinity;
     
     // Check all student's courses for upcoming lessons and meetings
-    for (const courseId of student.courses) {
+    const coursesToCheck = student.courses && student.courses.length > 0 
+      ? student.courses 
+      : await ctx.db.query("courses").withIndex("by_active", (q: any) => q.eq("isActive", true)).collect().then((courses: any) => courses.map((c: any) => c._id));
+    
+    for (const courseId of coursesToCheck) {
       // Get next lesson for this course
       const lessons = await ctx.db
         .query("lessons")
-        .withIndex("by_course_and_time", (q) => 
+        .withIndex("by_course_and_time", (q: any) => 
           q.eq("courseId", courseId).gt("scheduledTime", now)
         )
         .first();
@@ -233,10 +166,10 @@ export const getStudentDashboardByUserId = query({
     const endOfWeek = startOfWeek + (7 * 24 * 60 * 60 * 1000);
     
     const weeklyLessons = [];
-    for (const courseId of student.courses) {
+    for (const courseId of coursesToCheck) {
       const courseLessons = await ctx.db
         .query("lessons")
-        .withIndex("by_course_and_time", (q) => 
+        .withIndex("by_course_and_time", (q: any) => 
           q.eq("courseId", courseId)
             .gte("scheduledTime", startOfWeek)
             .lte("scheduledTime", endOfWeek)
@@ -245,7 +178,7 @@ export const getStudentDashboardByUserId = query({
       
       // Get course details for each lesson
       const course = await ctx.db.get(courseId);
-      const lessonsWithCourse = courseLessons.map(lesson => ({
+      const lessonsWithCourse = courseLessons.map((lesson: any) => ({
         ...lesson,
         course,
       }));
@@ -259,7 +192,7 @@ export const getStudentDashboardByUserId = query({
     // Get recent news
     const recentNews = await ctx.db
       .query("news")
-      .withIndex("by_published", (q) => 
+      .withIndex("by_published", (q: any) => 
         q.eq("isPublished", true).lt("publishedAt", now)
       )
       .order("desc")
@@ -267,9 +200,9 @@ export const getStudentDashboardByUserId = query({
     
     // Get news with attachments
     const newsWithAttachments = await Promise.all(
-      recentNews.map(async (news) => {
+      recentNews.map(async (news: any) => {
         const attachments = await Promise.all(
-          news.attachments.map(fileId => ctx.db.get(fileId))
+          news.attachments.map((fileId: any) => ctx.db.get(fileId))
         );
         return {
           ...news,
@@ -284,9 +217,16 @@ export const getStudentDashboardByUserId = query({
       nextLesson,
       weeklySchedule: weeklyLessons,
       recentNews: newsWithAttachments,
+      courses: await Promise.all(
+        coursesToCheck.map(async (courseId: any) => {
+          const course = await ctx.db.get(courseId);
+          return course;
+        })
+      ).then(courses => courses.filter(Boolean)),
     };
-  },
-});
+}
+
+
 
 // Get admin dashboard statistics
 export const getAdminDashboard = query({
@@ -306,7 +246,18 @@ export const getAdminDashboard = query({
     const startOfToday = now - (now % (24 * 60 * 60 * 1000));
     const endOfToday = startOfToday + (24 * 60 * 60 * 1000);
     
-    // Get today's meetings
+    // Get today's unified events (lessons and meetings)
+    const todaysLessons = await ctx.db
+      .query("lessons")
+      .withIndex("by_scheduled_time")
+      .filter((q) => 
+        q.and(
+          q.gte(q.field("scheduledTime"), startOfToday),
+          q.lt(q.field("scheduledTime"), endOfToday)
+        )
+      )
+      .collect();
+
     const todaysMeetings = await ctx.db
       .query("meetings")
       .withIndex("by_active", (q) => q.eq("isActive", true))
@@ -318,8 +269,20 @@ export const getAdminDashboard = query({
       )
       .collect();
     
-    // Get upcoming meetings (next 7 days)
+    // Get upcoming unified events (next 7 days)
     const nextWeek = now + (7 * 24 * 60 * 60 * 1000);
+    
+    const upcomingLessons = await ctx.db
+      .query("lessons")
+      .withIndex("by_scheduled_time")
+      .filter((q) => 
+        q.and(
+          q.gt(q.field("scheduledTime"), now),
+          q.lte(q.field("scheduledTime"), nextWeek)
+        )
+      )
+      .collect();
+
     const upcomingMeetings = await ctx.db
       .query("meetings")
       .withIndex("by_active", (q) => q.eq("isActive", true))
@@ -330,7 +293,32 @@ export const getAdminDashboard = query({
         )
       )
       .collect();
-    
+
+    // Filter out meetings that are already associated with lessons
+    const lessonMeetingIds = new Set([
+      ...todaysLessons.filter(lesson => lesson.meetingId).map(lesson => lesson.meetingId!),
+      ...upcomingLessons.filter(lesson => lesson.meetingId).map(lesson => lesson.meetingId!)
+    ]);
+
+    const todaysStandaloneMeetings = todaysMeetings.filter(
+      meeting => !lessonMeetingIds.has(meeting._id)
+    );
+
+    const upcomingStandaloneMeetings = upcomingMeetings.filter(
+      meeting => !lessonMeetingIds.has(meeting._id)
+    );
+
+    // Create unified events for today and upcoming
+    const todaysUnifiedEvents = [
+      ...todaysLessons.map(lesson => ({ ...lesson, type: 'lesson' as const })),
+      ...todaysStandaloneMeetings.map(meeting => ({ ...meeting, type: 'meeting' as const }))
+    ].sort((a, b) => a.scheduledTime - b.scheduledTime);
+
+    const upcomingUnifiedEvents = [
+      ...upcomingLessons.map(lesson => ({ ...lesson, type: 'lesson' as const })),
+      ...upcomingStandaloneMeetings.map(meeting => ({ ...meeting, type: 'meeting' as const }))
+    ].sort((a, b) => a.scheduledTime - b.scheduledTime);
+
     // Get recent news
     const recentNews = await ctx.db
       .query("news")
@@ -346,19 +334,26 @@ export const getAdminDashboard = query({
     // Get recent activity (files uploaded in last 7 days)
     const weekAgo = now - (7 * 24 * 60 * 60 * 1000);
     const recentFiles = allFiles.filter(file => file.uploadedAt > weekAgo);
+
+    // Count lessons with linked meetings
+    const allLessons = await ctx.db.query("lessons").collect();
+    const lessonsWithMeetings = allLessons.filter(lesson => lesson.meetingId).length;
     
     return {
       statistics: {
         totalStudents: totalStudents.length,
         totalCourses: totalCourses.length,
-        todaysMeetings: todaysMeetings.length,
-        upcomingMeetings: upcomingMeetings.length,
+        todaysEvents: todaysUnifiedEvents.length,
+        upcomingEvents: upcomingUnifiedEvents.length,
         totalFiles,
         totalFileSize,
         recentFiles: recentFiles.length,
+        lessonsWithMeetings,
+        totalLessons: allLessons.length,
+        totalMeetings: (await ctx.db.query("meetings").withIndex("by_active", (q) => q.eq("isActive", true)).collect()).length,
       },
-      todaysMeetings,
-      upcomingMeetings: upcomingMeetings.slice(0, 5), // Limit to 5 for dashboard
+      todaysEvents: todaysUnifiedEvents.slice(0, 10),
+      upcomingEvents: upcomingUnifiedEvents.slice(0, 10),
       recentNews,
       recentActivity: recentFiles.slice(0, 10), // Last 10 recent files
     };

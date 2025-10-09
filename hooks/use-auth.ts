@@ -39,17 +39,20 @@ export function useAuth() {
   
   const router = useRouter();
 
-  // Validate current session
+  // Validate current session with enhanced error handling
   const validateSession = useCallback(async () => {
     try {
       const response = await fetch('/api/auth/validate', {
         method: 'GET',
         credentials: 'include',
+        headers: {
+          'Cache-Control': 'no-cache',
+        },
       });
 
       if (response.ok) {
         const data = await response.json();
-        if (data.valid) {
+        if (data.valid && data.user) {
           setAuthState({
             user: data.user,
             isLoading: false,
@@ -60,13 +63,19 @@ export function useAuth() {
         }
       }
 
-      // Session invalid or expired
+      // Session invalid or expired - clear any existing state
       setAuthState({
         user: null,
         isLoading: false,
         isAuthenticated: false,
         sessionType: null,
       });
+      
+      // Clear any stale cookies on client side
+      if (typeof document !== 'undefined') {
+        document.cookie = 'auth-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+      }
+      
       return false;
     } catch (error) {
       console.error('Session validation error:', error);
@@ -80,9 +89,16 @@ export function useAuth() {
     }
   }, []);
 
-  // Student login
+  // Student login with enhanced error handling and validation
   const loginStudent = useCallback(async (credentials: LoginCredentials) => {
     try {
+      // Validate input
+      if (!credentials.email || !credentials.password) {
+        const errorMessage = 'البريد الإلكتروني وكلمة المرور مطلوبان';
+        toast.error(errorMessage);
+        return { success: false, error: errorMessage, code: 'MISSING_FIELDS' };
+      }
+
       setAuthState(prev => ({ ...prev, isLoading: true }));
 
       const response = await fetch('/api/auth/student/login', {
@@ -91,7 +107,10 @@ export function useAuth() {
           'Content-Type': 'application/json',
         },
         credentials: 'include',
-        body: JSON.stringify(credentials),
+        body: JSON.stringify({
+          email: credentials.email.toLowerCase().trim(),
+          password: credentials.password,
+        }),
       });
 
       const data = await response.json();
@@ -105,18 +124,44 @@ export function useAuth() {
         });
 
         toast.success(data.message || 'تم تسجيل الدخول بنجاح');
-        router.push('/dashboard');
+        
+        // Redirect to dashboard or intended page
+        const intendedPath = sessionStorage.getItem('intended-path');
+        if (intendedPath) {
+          sessionStorage.removeItem('intended-path');
+          router.push(intendedPath);
+        } else {
+          router.push('/dashboard');
+        }
+        
         return { success: true };
       } else {
         setAuthState(prev => ({ ...prev, isLoading: false }));
-        const errorMessage = data.error || 'حدث خطأ في تسجيل الدخول';
+        
+        // Enhanced error messages based on error codes
+        let errorMessage = data.error || 'حدث خطأ في تسجيل الدخول';
+        
+        switch (data.code) {
+          case 'INVALID_CREDENTIALS':
+            errorMessage = 'البريد الإلكتروني أو كلمة المرور غير صحيحة';
+            break;
+          case 'STUDENT_INACTIVE':
+            errorMessage = 'حساب الطالب غير نشط. يرجى التواصل مع الإدارة';
+            break;
+          case 'MISSING_FIELDS':
+            errorMessage = 'يرجى إدخال البريد الإلكتروني وكلمة المرور';
+            break;
+          default:
+            errorMessage = data.error || 'حدث خطأ في تسجيل الدخول';
+        }
+        
         toast.error(errorMessage);
         return { success: false, error: errorMessage, code: data.code };
       }
     } catch (error) {
       console.error('Student login error:', error);
       setAuthState(prev => ({ ...prev, isLoading: false }));
-      const errorMessage = 'حدث خطأ في الاتصال';
+      const errorMessage = 'حدث خطأ في الاتصال. يرجى التحقق من اتصال الإنترنت والمحاولة مرة أخرى';
       toast.error(errorMessage);
       return { success: false, error: errorMessage };
     }
@@ -164,14 +209,16 @@ export function useAuth() {
     }
   }, [router]);
 
-  // Logout
+  // Enhanced logout with thorough cleanup
   const logout = useCallback(async () => {
     try {
+      // Call logout API
       await fetch('/api/auth/logout', {
         method: 'POST',
         credentials: 'include',
       });
 
+      // Clear local state
       setAuthState({
         user: null,
         isLoading: false,
@@ -179,17 +226,39 @@ export function useAuth() {
         sessionType: null,
       });
 
+      // Clear any client-side storage
+      if (typeof window !== 'undefined') {
+        // Clear localStorage items that might contain auth data
+        localStorage.removeItem('auth-user');
+        localStorage.removeItem('auth-token');
+        sessionStorage.removeItem('intended-path');
+        
+        // Clear auth cookie on client side as backup
+        document.cookie = 'auth-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+      }
+
       toast.success('تم تسجيل الخروج بنجاح');
       router.push('/login');
     } catch (error) {
       console.error('Logout error:', error);
-      // Even if logout fails, clear local state
+      
+      // Even if logout API fails, clear local state
       setAuthState({
         user: null,
         isLoading: false,
         isAuthenticated: false,
         sessionType: null,
       });
+      
+      // Clear client-side data anyway
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('auth-user');
+        localStorage.removeItem('auth-token');
+        sessionStorage.removeItem('intended-path');
+        document.cookie = 'auth-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+      }
+      
+      toast.success('تم تسجيل الخروج');
       router.push('/login');
     }
   }, [router]);
@@ -199,9 +268,10 @@ export function useAuth() {
     validateSession();
   }, [validateSession]);
 
-  // Require authentication
+  // Require authentication with enhanced role-based access control
   const requireAuth = useCallback((requiredRole?: 'student' | 'admin') => {
     if (!authState.isAuthenticated) {
+      toast.error('يجب تسجيل الدخول للوصول لهذه الصفحة');
       router.push('/login');
       return false;
     }
@@ -213,7 +283,16 @@ export function useAuth() {
       }
       
       toast.error('غير مصرح لك بالوصول لهذه الصفحة');
-      router.push(authState.user?.role === 'admin' ? '/admin/dashboard' : '/dashboard');
+      
+      // Enhanced redirection logic
+      if (authState.user?.role === 'admin') {
+        router.push('/admin/dashboard');
+      } else if (authState.user?.role === 'student') {
+        router.push('/dashboard');
+      } else {
+        // Fallback for unknown roles
+        router.push('/login');
+      }
       return false;
     }
 

@@ -9,7 +9,6 @@ import { EnhancedNewsFeed } from "./enhanced-news-feed"
 import { CourseSection } from "./course-section"
 import { useStudentDashboard } from "@/hooks/use-student-dashboard"
 import { LoadingStates } from "@/components/shared/loading-states"
-import { SeedDataButton } from "./seed-data-button"
 
 export function StudentDashboard() {
   const router = useRouter()
@@ -38,7 +37,6 @@ export function StudentDashboard() {
             <p className="text-muted-foreground arabic-text">
               حدث خطأ أثناء تحميل لوحة التحكم. يرجى المحاولة مرة أخرى.
             </p>
-            <SeedDataButton />
           </div>
         </div>
       </StudentLayout>
@@ -64,7 +62,7 @@ export function StudentDashboard() {
             {/* Current Lesson Section */}
             <div className="lg:col-span-1">
               <CurrentLessonCard
-                currentMeeting={null}
+                currentMeeting={data?.currentMeeting}
                 nextLesson={data?.nextLesson}
               />
             </div>
@@ -81,7 +79,7 @@ export function StudentDashboard() {
           <CourseSection
             courses={data?.courses || []}
             isLoading={isLoading}
-            error={error}
+            error={data?.isEmpty?.courses ? null : error}
             onCourseClick={handleCourseClick}
             onRetry={retry}
             showHeader={true}

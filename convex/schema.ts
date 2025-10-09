@@ -3,19 +3,41 @@ import { v } from "convex/values";
 
 export default defineSchema({
   
-  // Student Model
-  students: defineTable({
+  // User Model for authentication
+  users: defineTable({
     email: v.string(),
-    password: v.string(), // Will be hashed
-    name: v.string(),
-    enrollmentDate: v.number(),
+    passwordHash: v.string(),
+    role: v.union(v.literal("admin"), v.literal("student")),
     isActive: v.boolean(),
-    courses: v.array(v.id("courses")),
-    role: v.union(v.literal("student"), v.literal("admin")),
+    createdAt: v.number(),
   })
     .index("by_email", ["email"])
+    .index("by_role", ["role"])
+    .index("by_active", ["isActive"]),
+
+  // Student Model (supports both old and new formats during migration)
+  students: defineTable({
+    // New format fields
+    userId: v.optional(v.id("users")), // Link to auth system (optional for migration)
+    name: v.string(),
+    email: v.string(),
+    phone: v.optional(v.string()),
+    courses: v.array(v.id("courses")),
+    isActive: v.boolean(),
+    invitationSent: v.optional(v.boolean()), // Optional for migration
+    lastLogin: v.optional(v.number()),
+    enrollmentDate: v.number(),
+    createdAt: v.optional(v.number()), // Optional for migration
+    updatedAt: v.optional(v.number()), // Optional for migration
+    
+    // Legacy fields (for backward compatibility)
+    password: v.optional(v.string()), // Legacy password field
+    role: v.optional(v.union(v.literal("student"), v.literal("admin"))), // Legacy role field
+  })
+    .index("by_user_id", ["userId"])
+    .index("by_email", ["email"])
     .index("by_active", ["isActive"])
-    .index("by_role", ["role"]),
+    .index("by_role", ["role"]), // Keep legacy index
 
   // Course Model
   courses: defineTable({
@@ -37,7 +59,7 @@ export default defineSchema({
     scheduledTime: v.number(),
     duration: v.number(),
     isActive: v.boolean(),
-    createdBy: v.optional(v.id("students")),
+    createdBy: v.optional(v.id("users")),
   })
     .index("by_course", ["courseId"])
     .index("by_scheduled_time", ["scheduledTime"])
@@ -64,7 +86,7 @@ export default defineSchema({
     publishedAt: v.number(),
     isPublished: v.boolean(),
     attachments: v.array(v.id("files")),
-    createdBy: v.id("students"),
+    createdBy: v.id("users"),
   })
     .index("by_published", ["isPublished", "publishedAt"])
     .index("by_created_by", ["createdBy"]),
@@ -75,7 +97,7 @@ export default defineSchema({
     name: v.string(),
     type: v.string(),
     size: v.number(),
-    uploadedBy: v.id("students"),
+    uploadedBy: v.id("users"),
     uploadedAt: v.number(),
   })
     .index("by_uploaded_by", ["uploadedBy"])

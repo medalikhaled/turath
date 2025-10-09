@@ -221,7 +221,7 @@ export function MeetingManagement() {
                                             scheduledTime: currentMeeting.scheduledTime,
                                             duration: currentMeeting.duration,
                                             isActive: currentMeeting.isActive,
-                                            createdBy: currentMeeting.createdBy
+                                            createdBy: currentMeeting.createdBy as any
                                         }}
                                         course={currentMeeting.course || undefined}
                                         onEdit={handleEdit}
@@ -253,7 +253,7 @@ export function MeetingManagement() {
                                                 return (
                                                     <MeetingListCard
                                                         key={meeting._id}
-                                                        meeting={meeting}
+                                                        meeting={meeting as any}
                                                         course={course || undefined}
                                                         onEdit={handleEdit}
                                                         isCompact={false}

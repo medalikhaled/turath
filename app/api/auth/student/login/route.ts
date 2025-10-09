@@ -9,6 +9,7 @@ export async function POST(request: NextRequest) {
     try {
         const { email, password } = await request.json();
 
+        // Enhanced input validation
         if (!email || !password) {
             return NextResponse.json(
                 { error: 'البريد الإلكتروني وكلمة المرور مطلوبان', code: 'MISSING_FIELDS' },
@@ -16,30 +17,33 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Get student for authentication
-        const student = await convex.query(api.studentAuth.getStudentForAuth, {
+        // Validate email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            return NextResponse.json(
+                { error: 'صيغة البريد الإلكتروني غير صحيحة', code: 'INVALID_EMAIL_FORMAT' },
+                { status: 400 }
+            );
+        }
+
+        // Verify credentials using the enhanced function
+        const result = await convex.mutation(api.students.verifyStudentCredentials, {
             email: email.toLowerCase().trim(),
+            password,
         });
 
-        if (!student) {
+        if (!result) {
             return NextResponse.json(
                 { error: 'البريد الإلكتروني أو كلمة المرور غير صحيحة', code: 'INVALID_CREDENTIALS' },
                 { status: 401 }
             );
         }
 
-        // Verify password
-        const isPasswordValid = await verifyPassword(password, student.hashedPassword);
-        if (!isPasswordValid) {
-            return NextResponse.json(
-                { error: 'البريد الإلكتروني أو كلمة المرور غير صحيحة', code: 'INVALID_CREDENTIALS' },
-                { status: 401 }
-            );
-        }
+        const { user, student } = result;
 
-        // Generate JWT token
+        // Generate JWT token with enhanced payload
         const tokenPayload: TokenPayload = {
-            userId: student.id,
+            userId: student._id,
             email: student.email,
             role: 'student',
             sessionType: 'student',
@@ -47,11 +51,11 @@ export async function POST(request: NextRequest) {
 
         const token = await generateToken(tokenPayload);
 
-        // Create session in Convex
+        // Create session in Convex with enhanced data
         await convex.mutation(api.auth.createStudentSession, {
-            studentId: student.id,
+            studentId: student._id,
             sessionData: {
-                userId: student.id,
+                userId: student._id,
                 email: student.email,
                 role: 'student',
                 sessionType: 'student',
@@ -59,26 +63,25 @@ export async function POST(request: NextRequest) {
             },
         });
 
-        // Update last login
-        await convex.mutation(api.auth.updateStudentLastLogin, {
-            studentId: student.id,
-        });
-
-        // Create response with token in cookie
+        // Create response with enhanced user data
         const response = NextResponse.json({
             success: true,
             message: 'تم تسجيل الدخول بنجاح',
             user: {
-                id: student.id,
+                id: student._id,
                 email: student.email,
                 name: student.name,
-                role: student.role,
+                role: 'student',
                 courses: student.courses,
+                enrollmentDate: student.enrollmentDate,
+                lastLogin: student.lastLogin,
             },
             token,
+            sessionType: 'student',
+            expiresAt: Date.now() + (7 * 24 * 60 * 60 * 1000),
         });
 
-        // Set HTTP-only cookie for additional security
+        // Set HTTP-only cookie with enhanced security
         response.cookies.set('auth-token', token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
@@ -87,10 +90,23 @@ export async function POST(request: NextRequest) {
             path: '/',
         });
 
+        // Clear intended path cookie if it exists
+        const intendedPath = request.cookies.get('intended-path')?.value;
+        if (intendedPath) {
+            response.cookies.set('intended-path', '', {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'lax',
+                maxAge: 0,
+                path: '/',
+            });
+        }
+
         return response;
     } catch (error: any) {
         console.error('Student login error:', error);
 
+        // Enhanced error handling with specific error codes
         if (error.message?.includes('INVALID_CREDENTIALS')) {
             return NextResponse.json(
                 { error: 'البريد الإلكتروني أو كلمة المرور غير صحيحة', code: 'INVALID_CREDENTIALS' },
@@ -100,13 +116,28 @@ export async function POST(request: NextRequest) {
 
         if (error.message?.includes('STUDENT_INACTIVE')) {
             return NextResponse.json(
-                { error: 'حساب الطالب غير نشط', code: 'STUDENT_INACTIVE' },
+                { error: 'حساب الطالب غير نشط. يرجى التواصل مع الإدارة', code: 'STUDENT_INACTIVE' },
                 { status: 403 }
             );
         }
 
+        if (error.message?.includes('INVALID_EMAIL_FORMAT')) {
+            return NextResponse.json(
+                { error: 'صيغة البريد الإلكتروني غير صحيحة', code: 'INVALID_EMAIL_FORMAT' },
+                { status: 400 }
+            );
+        }
+
+        // Rate limiting error (if implemented)
+        if (error.message?.includes('TOO_MANY_ATTEMPTS')) {
+            return NextResponse.json(
+                { error: 'تم تجاوز عدد المحاولات المسموح. يرجى المحاولة لاحقاً', code: 'TOO_MANY_ATTEMPTS' },
+                { status: 429 }
+            );
+        }
+
         return NextResponse.json(
-            { error: 'حدث خطأ في تسجيل الدخول', code: 'LOGIN_ERROR' },
+            { error: 'حدث خطأ في تسجيل الدخول. يرجى المحاولة مرة أخرى', code: 'LOGIN_ERROR' },
             { status: 500 }
         );
     }

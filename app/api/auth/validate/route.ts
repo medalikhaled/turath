@@ -23,43 +23,77 @@ export async function GET(request: NextRequest) {
     // Verify JWT token
     const payload = await verifyToken(token);
     if (!payload) {
-      return NextResponse.json(
-        { valid: false, error: 'رمز المصادقة غير صالح', code: 'INVALID_TOKEN' },
+      // Clear invalid token cookie
+      const response = NextResponse.json(
+        { valid: false, error: 'رمز المصادقة غير صالح أو منتهي الصلاحية', code: 'INVALID_TOKEN' },
         { status: 401 }
       );
+      
+      response.cookies.set('auth-token', '', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 0,
+        path: '/',
+      });
+      
+      return response;
     }
 
     // Get user data from database to ensure user still exists and is active
     let userData = null;
     
-    if (payload.role === 'student') {
-      userData = await convex.query(api.auth.getStudentById, {
-        studentId: payload.userId as any,
-      });
-    } else if (payload.role === 'admin') {
-      userData = await convex.query(api.auth.getAdminByEmail, {
-        email: payload.email,
-      });
-    }
-
-    if (!userData) {
+    try {
+      if (payload.role === 'student') {
+        userData = await convex.query(api.auth.getStudentById, {
+          studentId: payload.userId as any,
+        });
+      } else if (payload.role === 'admin') {
+        userData = await convex.query(api.auth.getAdminByEmail, {
+          email: payload.email,
+        });
+      }
+    } catch (dbError) {
+      console.error('Database error during session validation:', dbError);
       return NextResponse.json(
-        { valid: false, error: 'المستخدم غير موجود أو غير نشط', code: 'USER_NOT_FOUND' },
-        { status: 404 }
+        { valid: false, error: 'خطأ في قاعدة البيانات', code: 'DATABASE_ERROR' },
+        { status: 500 }
       );
     }
 
-    // Return valid session data
+    if (!userData) {
+      // Clear token for non-existent or inactive user
+      const response = NextResponse.json(
+        { valid: false, error: 'المستخدم غير موجود أو غير نشط', code: 'USER_NOT_FOUND' },
+        { status: 404 }
+      );
+      
+      response.cookies.set('auth-token', '', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 0,
+        path: '/',
+      });
+      
+      return response;
+    }
+
+    // Return enhanced session data
     const userResponse: any = {
       id: userData.id,
       email: userData.email,
       name: userData.name,
-      role: userData.role,
+      role: payload.role, // Use role from token for consistency
     };
 
-    // Add courses only for students
+    // Add role-specific data
     if (payload.role === 'student' && 'courses' in userData) {
       userResponse.courses = userData.courses;
+      // Add enrollmentDate if it exists in the userData
+      if ('enrollmentDate' in userData) {
+        userResponse.enrollmentDate = userData.enrollmentDate;
+      }
     }
 
     return NextResponse.json({
@@ -67,13 +101,26 @@ export async function GET(request: NextRequest) {
       user: userResponse,
       sessionType: payload.sessionType,
       expiresAt: payload.exp ? payload.exp * 1000 : null, // Convert to milliseconds
+      issuedAt: payload.iat ? payload.iat * 1000 : null,
+      tokenValid: true,
     });
   } catch (error: any) {
     console.error('Session validation error:', error);
     
-    return NextResponse.json(
+    // Clear potentially corrupted token
+    const response = NextResponse.json(
       { valid: false, error: 'خطأ في التحقق من الجلسة', code: 'VALIDATION_ERROR' },
       { status: 500 }
     );
+    
+    response.cookies.set('auth-token', '', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 0,
+      path: '/',
+    });
+    
+    return response;
   }
 }

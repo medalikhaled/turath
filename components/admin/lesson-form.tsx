@@ -16,7 +16,10 @@ import {
     ClockIcon,
     AlertTriangleIcon,
     CheckIcon,
-    XIcon
+    XIcon,
+    VideoIcon,
+    LinkIcon,
+    KeyIcon
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { 
@@ -24,6 +27,7 @@ import {
     ScheduleValidationResult,
     detectTimeConflicts 
 } from "@/lib/schedule-validation"
+import { Switch } from "@/components/ui/switch"
 
 interface Lesson {
     _id: Id<"lessons">
@@ -76,6 +80,12 @@ export function LessonForm({
         warnings: []
     })
 
+    // Meeting integration state
+    const [autoCreateMeeting, setAutoCreateMeeting] = React.useState(false)
+    const [meetingLink, setMeetingLink] = React.useState("")
+    const [meetingPassword, setMeetingPassword] = React.useState("")
+    const [meetingDuration, setMeetingDuration] = React.useState(60)
+
     React.useEffect(() => {
         setIsClient(true)
     }, [])
@@ -86,7 +96,52 @@ export function LessonForm({
     )
 
     const createLesson = useMutation(api.lessons.createLesson)
+    const createLessonWithMeeting = useMutation(api.lessons.createLessonWithMeeting)
     const updateLesson = useMutation(api.lessons.updateLesson)
+    const createMeeting = useMutation(api.meetings.createMeeting)
+
+    // Google Meet link validation helper
+    const validateGoogleMeetLink = React.useCallback((link: string): { isValid: boolean; formatted?: string; error?: string } => {
+        if (!link.trim()) {
+            return { isValid: false, error: 'رابط Google Meet مطلوب عند تفعيل إنشاء الجلسة' }
+        }
+
+        const cleanLink = link.trim()
+        const meetPatterns = [
+            /^https:\/\/meet\.google\.com\/[a-z]{3}-[a-z]{4}-[a-z]{3}$/,
+            /^https:\/\/meet\.google\.com\/[a-z0-9-]+$/,
+            /^meet\.google\.com\/[a-z]{3}-[a-z]{4}-[a-z]{3}$/,
+            /^meet\.google\.com\/[a-z0-9-]+$/,
+            /^[a-z]{3}-[a-z]{4}-[a-z]{3}$/,
+            /^[a-z0-9-]+$/
+        ]
+
+        let formattedLink = cleanLink
+        if (!formattedLink.startsWith('https://')) {
+            if (formattedLink.startsWith('meet.google.com/')) {
+                formattedLink = 'https://' + formattedLink
+            } else if (meetPatterns.some(pattern => pattern.test(formattedLink))) {
+                formattedLink = 'https://meet.google.com/' + formattedLink
+            }
+        }
+
+        const isValidFormat = meetPatterns.some(pattern => {
+            if (pattern.source.includes('https://')) {
+                return pattern.test(formattedLink)
+            } else {
+                return pattern.test(formattedLink.replace('https://meet.google.com/', ''))
+            }
+        })
+
+        if (!isValidFormat) {
+            return { 
+                isValid: false, 
+                error: 'تنسيق رابط Google Meet غير صحيح. مثال: https://meet.google.com/abc-defg-hij' 
+            }
+        }
+
+        return { isValid: true, formatted: formattedLink }
+    }, [])
 
     // Initialize form with existing lesson data or selected date
     React.useEffect(() => {
@@ -100,6 +155,12 @@ export function LessonForm({
             const lessonDate = new Date(existingLesson.scheduledTime)
             setScheduledDate(lessonDate.toISOString().split('T')[0])
             setScheduledTime(lessonDate.toTimeString().slice(0, 5))
+
+            // If lesson has an associated meeting, enable auto-create and load meeting data
+            if (existingLesson.meetingId) {
+                setAutoCreateMeeting(true)
+                // Note: We would need to fetch meeting data here, but for now we'll just enable the toggle
+            }
         } else if (selectedDate) {
             const dateStr = selectedDate.toISOString().split('T')[0]
             const timeStr = selectedDate.toTimeString().slice(0, 5)
@@ -179,6 +240,14 @@ export function LessonForm({
             return
         }
 
+        // Validate meeting fields if auto-create is enabled
+        if (autoCreateMeeting) {
+            const linkValidation = validateGoogleMeetLink(meetingLink)
+            if (!linkValidation.isValid) {
+                return
+            }
+        }
+
         const dateTime = getScheduledDateTime()
         if (!dateTime) return
 
@@ -186,6 +255,7 @@ export function LessonForm({
 
         try {
             if (lessonId) {
+                // Update existing lesson
                 await updateLesson({
                     id: lessonId,
                     title: title.trim(),
@@ -193,12 +263,32 @@ export function LessonForm({
                     scheduledTime: dateTime,
                 })
             } else {
-                await createLesson({
-                    courseId: courseId as Id<"courses">,
-                    title: title.trim(),
-                    description: description.trim() || undefined,
-                    scheduledTime: dateTime,
-                })
+                // Create new lesson with optional meeting
+                if (autoCreateMeeting) {
+                    const linkValidation = validateGoogleMeetLink(meetingLink)
+                    if (linkValidation.isValid && linkValidation.formatted) {
+                        await createLessonWithMeeting({
+                            courseId: courseId as Id<"courses">,
+                            title: title.trim(),
+                            description: description.trim() || undefined,
+                            scheduledTime: dateTime,
+                            createMeeting: true,
+                            meetingData: {
+                                googleMeetLink: linkValidation.formatted,
+                                password: meetingPassword || undefined,
+                                duration: meetingDuration,
+                            },
+                        })
+                    }
+                } else {
+                    // Create lesson without meeting
+                    await createLesson({
+                        courseId: courseId as Id<"courses">,
+                        title: title.trim(),
+                        description: description.trim() || undefined,
+                        scheduledTime: dateTime,
+                    })
+                }
             }
             onSuccess()
         } catch (error) {
@@ -278,6 +368,93 @@ export function LessonForm({
                     className="arabic-text"
                     dir="rtl"
                 />
+            </div>
+
+            {/* Meeting Integration Toggle */}
+            <div className="space-y-4 p-4 border rounded-lg bg-muted/20">
+                <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                        <Label className="arabic-text flex items-center">
+                            <VideoIcon className="h-4 w-4 ml-1" />
+                            إنشاء جلسة مرتبطة
+                        </Label>
+                        <p className="text-sm text-muted-foreground arabic-text">
+                            إنشاء جلسة Google Meet تلقائياً مع هذا الدرس
+                        </p>
+                    </div>
+                    <Switch
+                        checked={autoCreateMeeting}
+                        onCheckedChange={setAutoCreateMeeting}
+                        disabled={!!lessonId} // Disable for existing lessons for now
+                    />
+                </div>
+
+                {/* Meeting Fields - Show when toggle is enabled */}
+                {autoCreateMeeting && (
+                    <div className="space-y-4 pt-4 border-t">
+                        {/* Google Meet Link */}
+                        <div className="space-y-2">
+                            <Label htmlFor="meetingLink" className="arabic-text flex items-center">
+                                <LinkIcon className="h-4 w-4 ml-1" />
+                                رابط Google Meet
+                            </Label>
+                            <Input
+                                id="meetingLink"
+                                type="url"
+                                value={meetingLink}
+                                onChange={(e) => setMeetingLink(e.target.value)}
+                                placeholder="https://meet.google.com/abc-defg-hij"
+                                className="text-left"
+                                dir="ltr"
+                                required={autoCreateMeeting}
+                            />
+                            <p className="text-xs text-muted-foreground arabic-text">
+                                أدخل رابط Google Meet للجلسة
+                            </p>
+                        </div>
+
+                        {/* Meeting Password */}
+                        <div className="space-y-2">
+                            <Label htmlFor="meetingPassword" className="arabic-text flex items-center">
+                                <KeyIcon className="h-4 w-4 ml-1" />
+                                كلمة مرور الجلسة (اختيارية)
+                            </Label>
+                            <Input
+                                id="meetingPassword"
+                                type="text"
+                                value={meetingPassword}
+                                onChange={(e) => setMeetingPassword(e.target.value)}
+                                placeholder="كلمة مرور الجلسة"
+                                className="arabic-text"
+                                dir="rtl"
+                            />
+                        </div>
+
+                        {/* Meeting Duration */}
+                        <div className="space-y-2">
+                            <Label htmlFor="meetingDuration" className="arabic-text flex items-center">
+                                <ClockIcon className="h-4 w-4 ml-1" />
+                                مدة الجلسة (بالدقائق)
+                            </Label>
+                            <Select
+                                value={meetingDuration.toString()}
+                                onValueChange={(value) => setMeetingDuration(parseInt(value))}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent dir="rtl">
+                                    <SelectItem value="30">30 دقيقة</SelectItem>
+                                    <SelectItem value="45">45 دقيقة</SelectItem>
+                                    <SelectItem value="60">ساعة واحدة</SelectItem>
+                                    <SelectItem value="90">ساعة ونصف</SelectItem>
+                                    <SelectItem value="120">ساعتان</SelectItem>
+                                    <SelectItem value="180">3 ساعات</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Date and Time */}
@@ -411,7 +588,15 @@ export function LessonForm({
             <div className="flex gap-3 pt-4">
                 <Button
                     type="submit"
-                    disabled={isSubmitting || !title.trim() || !courseId || !scheduledDate || !scheduledTime || hasValidationErrors}
+                    disabled={
+                        isSubmitting || 
+                        !title.trim() || 
+                        !courseId || 
+                        !scheduledDate || 
+                        !scheduledTime || 
+                        hasValidationErrors ||
+                        (autoCreateMeeting && (!meetingLink.trim() || !validateGoogleMeetLink(meetingLink).isValid))
+                    }
                     className="flex-1 arabic-text"
                 >
                     {isSubmitting ? (

@@ -23,7 +23,7 @@ export default function UnifiedLoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
   
-  const { loginStudent, loginAdmin, isAuthenticated } = useAuthContext()
+  const { loginStudent, loginAdmin, isAuthenticated, user } = useAuthContext()
   
   // Check if email is admin email
   const adminEmailCheck = useQuery(api.otp.isAdminEmail, email ? { email } : "skip")
@@ -32,9 +32,18 @@ export default function UnifiedLoginPage() {
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      router.push("/dashboard")
+      // Check for intended path from middleware
+      const intendedPath = sessionStorage.getItem('intended-path');
+      if (intendedPath) {
+        sessionStorage.removeItem('intended-path');
+        router.push(intendedPath);
+      } else {
+        // Default redirect based on user role
+        const defaultPath = user?.role === 'admin' ? '/admin/dashboard' : '/dashboard';
+        router.push(defaultPath);
+      }
     }
-  }, [isAuthenticated, router])
+  }, [isAuthenticated, user?.role, router])
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

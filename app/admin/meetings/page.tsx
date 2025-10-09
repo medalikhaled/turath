@@ -1,9 +1,10 @@
 import { MeetingManagement } from "@/components/admin/meeting-management"
+import { AdminPageWrapper } from "@/components/layouts/admin-page-wrapper"
 
 export default function MeetingsPage() {
   return (
-    <div className="container mx-auto py-6">
+    <AdminPageWrapper currentPage="meetings">
       <MeetingManagement />
-    </div>
+    </AdminPageWrapper>
   )
 }

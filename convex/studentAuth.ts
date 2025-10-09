@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { ConvexError } from "./utils";
 
-// Create a new student with hashed password
+// Create a new student with hashed password (legacy function - use students.createStudentWithUser instead)
 export const createStudentWithPassword = mutation({
   args: {
     email: v.string(),
@@ -13,24 +13,35 @@ export const createStudentWithPassword = mutation({
   handler: async (ctx, args) => {
     const email = args.email.toLowerCase().trim();
 
-    // Check if student already exists
-    const existingStudent = await ctx.db
-      .query("students")
+    // Check if user already exists
+    const existingUser = await ctx.db
+      .query("users")
       .withIndex("by_email", (q) => q.eq("email", email))
       .first();
 
-    if (existingStudent) {
-      throw new ConvexError("الطالب موجود بالفعل", "STUDENT_EXISTS");
+    if (existingUser) {
+      throw new ConvexError("المستخدم موجود بالفعل", "USER_EXISTS");
     }
 
-    // Create student with hashed password
-    const studentId = await ctx.db.insert("students", {
+    // Create user account
+    const userId = await ctx.db.insert("users", {
       email,
-      name: args.name,
-      password: args.password, // Should be hashed
+      passwordHash: args.password, // Should be hashed
       role: "student",
       isActive: true,
+      createdAt: Date.now(),
+    });
+
+    // Create student profile
+    const studentId = await ctx.db.insert("students", {
+      userId,
+      email,
+      name: args.name,
+      isActive: true,
+      invitationSent: false,
       enrollmentDate: Date.now(),
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
       courses: args.courses || [],
     });
 
@@ -54,8 +65,16 @@ export const updateStudentPassword = mutation({
       throw new ConvexError("الطالب غير موجود", "STUDENT_NOT_FOUND");
     }
 
+    // Update the user's password
+    if (student.userId) {
+      await ctx.db.patch(student.userId, {
+        passwordHash: args.newPassword,
+      });
+    }
+
+    // Update student record
     await ctx.db.patch(args.studentId, {
-      password: args.newPassword,
+      updatedAt: Date.now(),
     });
 
     return {
@@ -71,12 +90,23 @@ export const getStudentForAuth = query({
   handler: async (ctx, args) => {
     const email = args.email.toLowerCase().trim();
     
-    const student = await ctx.db
-      .query("students")
+    // Find user by email
+    const user = await ctx.db
+      .query("users")
       .withIndex("by_email", (q) => q.eq("email", email))
       .first();
     
-    if (!student || !student.isActive || student.role !== "student") {
+    if (!user || user.role !== "student" || !user.isActive) {
+      return null;
+    }
+
+    // Get student profile
+    const student = await ctx.db
+      .query("students")
+      .withIndex("by_user_id", (q) => q.eq("userId", user._id))
+      .first();
+    
+    if (!student || !student.isActive) {
       return null;
     }
 
@@ -84,8 +114,8 @@ export const getStudentForAuth = query({
       id: student._id,
       email: student.email,
       name: student.name,
-      role: student.role,
-      hashedPassword: student.password,
+      role: "student",
+      hashedPassword: user.passwordHash,
       courses: student.courses,
       enrollmentDate: student.enrollmentDate,
     };
@@ -97,7 +127,6 @@ export const getAllStudents = query({
   handler: async (ctx) => {
     const students = await ctx.db
       .query("students")
-      .withIndex("by_role", (q) => q.eq("role", "student"))
       .collect();
 
     return students.map(student => ({

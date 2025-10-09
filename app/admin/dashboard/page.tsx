@@ -1,12 +1,12 @@
 "use client"
 
-import { AdminLayout } from "@/components/layouts/admin-layout"
+import { AdminPageWrapper } from "@/components/layouts/admin-page-wrapper"
 import { AdminDashboard } from "@/components/admin/dashboard"
 
 export default function AdminDashboardPage() {
   return (
-    <AdminLayout currentPage="dashboard">
+    <AdminPageWrapper currentPage="dashboard">
       <AdminDashboard />
-    </AdminLayout>
+    </AdminPageWrapper>
   )
 }
