@@ -3,6 +3,9 @@
  * 
  * Sends student invitations and admin OTP emails using Resend API.
  * Logs email content in development for easy testing.
+ * 
+ * Note: Uses Resend's built-in @resend.dev domain in development mode
+ * to avoid DNS verification issues. Production uses custom domain.
  */
 
 // ============================================================================
@@ -12,6 +15,15 @@
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const IS_DEV = process.env.NODE_ENV !== 'production';
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+
+// Use Resend's built-in domain for development, custom domain for production
+const FROM_EMAIL_STUDENT = IS_DEV 
+  ? 'Hanbali Academy <onboarding@resend.dev>' 
+  : 'أكاديمية التراث الحنبلي <noreply@hanbali-academy.com>';
+
+const FROM_EMAIL_ADMIN = IS_DEV 
+  ? 'Hanbali Academy Admin <admin@resend.dev>' 
+  : 'Hanbali Heritage Academy <admin@hanbali-academy.com>';
 
 // ============================================================================
 // Helper Functions
@@ -53,8 +65,9 @@ function logEmailInDev(type: 'student' | 'admin', data: any): void {
   
   if (type === 'student') {
     console.log('\n' + '='.repeat(60));
-    console.log('📧 STUDENT INVITATION EMAIL (Sent via Resend)');
+    console.log('📧 STUDENT INVITATION EMAIL (Sent via Resend @resend.dev)');
     console.log('='.repeat(60));
+    console.log(`From: ${FROM_EMAIL_STUDENT}`);
     console.log(`To: ${data.to}`);
     console.log(`Name: ${data.name}`);
     console.log(`Temp Password: ${data.tempPassword}`);
@@ -62,8 +75,9 @@ function logEmailInDev(type: 'student' | 'admin', data: any): void {
     console.log('='.repeat(60) + '\n');
   } else {
     console.log('\n' + '='.repeat(60));
-    console.log('📧 ADMIN OTP EMAIL (Sent via Resend)');
+    console.log('📧 ADMIN OTP EMAIL (Sent via Resend @resend.dev)');
     console.log('='.repeat(60));
+    console.log(`From: ${FROM_EMAIL_ADMIN}`);
     console.log(`To: ${data.to}`);
     console.log(`OTP: ${data.otp}`);
     console.log(`Expires: ${new Date(data.expiresAt).toLocaleString()}`);
@@ -100,7 +114,7 @@ export async function sendStudentInvitation(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'أكاديمية التراث الحنبلي <noreply@hanbali-academy.com>',
+        from: FROM_EMAIL_STUDENT,
         to: [to],
         subject: 'دعوة للانضمام إلى أكاديمية التراث الحنبلي',
         html: `
@@ -201,7 +215,7 @@ export async function sendAdminOTP(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'Hanbali Heritage Academy <admin@hanbali-academy.com>',
+        from: FROM_EMAIL_ADMIN,
         to: [to],
         subject: 'Admin Login OTP - Hanbali Heritage Academy',
         html: `
