@@ -95,18 +95,11 @@ export function getEndOfDay(date: Date = new Date()): number {
     return new Date(date).setHours(23, 59, 59, 999);
 }
 
-// Validation utilities
-export function isValidEmail(email: string): boolean {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-}
-
 export function isValidGoogleMeetLink(link: string): boolean {
     const meetRegex = /^https:\/\/meet\.google\.com\/[a-z0-9-]+$/;
     return meetRegex.test(link);
 }
 
-// Error handling
 export class ConvexError extends Error {
     constructor(message: string, public code?: string) {
         super(message);

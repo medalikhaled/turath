@@ -18,7 +18,6 @@ import type * as authFunctions from "../authFunctions.js";
 import type * as courses from "../courses.js";
 import type * as createAdmin from "../createAdmin.js";
 import type * as dashboard from "../dashboard.js";
-import type * as demo from "../demo.js";
 import type * as files from "../files.js";
 import type * as lessons from "../lessons.js";
 import type * as meetings from "../meetings.js";
@@ -41,7 +40,6 @@ declare const fullApi: ApiFromModules<{
   courses: typeof courses;
   createAdmin: typeof createAdmin;
   dashboard: typeof dashboard;
-  demo: typeof demo;
   files: typeof files;
   lessons: typeof lessons;
   meetings: typeof meetings;

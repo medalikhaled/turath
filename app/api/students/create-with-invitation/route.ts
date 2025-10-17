@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getEmailService, generateInvitationData } from '@/lib/email-service';
-import { hashPassword } from '@/lib/password-utils';
+import { generateInvitationData, sendStudentInvitation } from '@/lib/email-service';
 import { ConvexHttpClient } from 'convex/browser';
 import { api } from '@/convex/_generated/api';
 
@@ -49,8 +48,7 @@ export async function POST(request: NextRequest) {
     // Send email invitation if requested
     let emailSent = false;
     if (sendInvitation && result.invitationData) {
-      const emailService = getEmailService();
-      emailSent = await emailService.sendStudentInvitation(
+      emailSent = await sendStudentInvitation(
         result.invitationData.email,
         result.invitationData.name,
         result.invitationData.tempPassword,

@@ -14,7 +14,7 @@ interface ProtectedRouteProps {
   showErrorDetails?: boolean;
 }
 
-export function ProtectedRoute({ 
+function ProtectedRoute({ 
   children, 
   requiredRole, 
   fallback,

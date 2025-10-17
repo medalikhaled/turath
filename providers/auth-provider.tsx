@@ -2,7 +2,6 @@
 
 import React, { createContext, useContext, ReactNode } from 'react';
 import { useAuth, AuthState, LoginCredentials, AdminLoginCredentials, User, AuthResult } from '@/hooks/use-auth';
-import { AuthError } from '@/lib/auth-error-handler';
 
 interface AuthContextType extends AuthState {
   loginStudent: (credentials: LoginCredentials) => Promise<AuthResult>;
