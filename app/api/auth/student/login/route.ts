@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
 
         // Generate JWT token using OSLOJS SessionService
         const tokenResult = await SessionService.createSession({
-            userId: studentData.studentId,
+            userId: studentData.userId, // Use userId from users table, not studentId
             email: studentData.email,
             role: 'student',
         });
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
             success: true,
             message: 'تم تسجيل الدخول بنجاح',
             user: {
-                id: studentData.studentId,
+                id: studentData.userId, // Use userId from users table for consistency
                 email: studentData.email,
                 name: studentData.name,
                 role: 'student',

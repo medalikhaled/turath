@@ -40,8 +40,9 @@ export async function POST(request: NextRequest) {
 
     // Create or update admin user record in database
     const normalizedEmail = email.toLowerCase().trim();
+    let adminUserResult;
     try {
-      await fetchMutation(api.adminManagement.createOrUpdateAdminUser, {
+      adminUserResult = await fetchMutation(api.adminManagement.createOrUpdateAdminUser, {
         email: normalizedEmail,
       });
     } catch (error) {
@@ -52,9 +53,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create JWT token using SessionService
+    // Create JWT token using SessionService with proper user ID
     const tokenResult = await SessionService.createSession({
-      userId: normalizedEmail, // Use email as userId for admins
+      userId: adminUserResult.userId, // Use actual user ID from users table
       email: normalizedEmail,
       role: 'admin',
     });
@@ -71,7 +72,7 @@ export async function POST(request: NextRequest) {
       success: true,
       message: 'تم تسجيل الدخول بنجاح',
       user: {
-        id: normalizedEmail,
+        id: adminUserResult.userId, // Use actual user ID from users table
         email: normalizedEmail,
         name: 'مدير النظام',
         role: 'admin',

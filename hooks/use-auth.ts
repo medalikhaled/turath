@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { AuthErrorHandler, AuthErrorCode, type AuthError } from '@/lib/auth-error-handler';
+import { logAuthValidation } from '@/lib/auth-monitoring';
 
 export interface User {
   id: string;
@@ -48,14 +49,14 @@ export interface AuthResult {
   requiresPasswordChange?: boolean;
 }
 
-export function useAuth() {
+export function useAuth(initialAuthState?: { isAuthenticated: boolean; user: any; sessionType: 'student' | 'admin' | null; expiresAt: number | null }) {
   const [authState, setAuthState] = useState<AuthState>({
-    user: null,
-    isLoading: true,
-    isAuthenticated: false,
-    sessionType: null,
+    user: initialAuthState?.user || null,
+    isLoading: !initialAuthState, // If we have initial state, we're not loading
+    isAuthenticated: initialAuthState?.isAuthenticated || false,
+    sessionType: initialAuthState?.sessionType || null,
     error: null,
-    sessionExpiresAt: undefined,
+    sessionExpiresAt: initialAuthState?.expiresAt || undefined,
     // Enhanced loading states for better UX
     isValidatingSession: false,
     isLoggingIn: false,
@@ -79,8 +80,12 @@ export function useAuth() {
   }, [clearError]);
 
   // Validate current session with enhanced error handling and OSLOJS integration
-  const validateSession = useCallback(async () => {
+  const validateSession = useCallback(async (reason?: string) => {
     try {
+      // Log why validation is happening to monitor optimization effectiveness
+      const validationReason = reason || 'unknown reason';
+      logAuthValidation(validationReason);
+      
       setAuthState(prev => ({ 
         ...prev, 
         isLoading: true, 
@@ -94,6 +99,7 @@ export function useAuth() {
         headers: {
           'Cache-Control': 'no-cache',
           'X-Requested-With': 'XMLHttpRequest', // Enhanced security header
+          'X-Validation-Reason': validationReason, // Track validation reasons
         },
       });
 
@@ -604,9 +610,13 @@ export function useAuth() {
     }
   }, [authState.user?.id, authState.sessionType, setError]);
 
-  // Enhanced session monitoring with OSLOJS integration and proactive refresh
+  // Optimized session monitoring - only validate when necessary
   useEffect(() => {
-    validateSession();
+    // Only validate session on initial load if we don't have user data AND no initial state was provided
+    // Middleware already handles route protection, so we trust it for initial validation
+    if (!authState.user && !authState.isAuthenticated && !authState.isLoading && !initialAuthState) {
+      validateSession('initial-load-no-user-data');
+    }
 
     // Enhanced session expiration monitoring with proactive refresh
     const checkSessionExpiration = () => {
@@ -639,11 +649,21 @@ export function useAuth() {
     // Check session expiration every 30 seconds for better responsiveness
     const sessionCheckInterval = setInterval(checkSessionExpiration, 30000);
 
-    // Enhanced visibility change handling for OSLOJS session management
+    // Optimized visibility change handling - only validate if user was away for more than 5 minutes
+    let lastVisibilityChange = Date.now();
     const handleVisibilityChange = () => {
       if (!document.hidden && authState.isAuthenticated) {
-        // Validate session when user returns to tab
-        validateSession();
+        const now = Date.now();
+        const timeAway = now - lastVisibilityChange;
+        
+        // Only validate if user was away for more than 5 minutes
+        if (timeAway > 5 * 60 * 1000) {
+          console.info('Validating session after extended absence:', timeAway / 1000 / 60, 'minutes');
+          validateSession(`user-return-after-${Math.round(timeAway / 1000 / 60)}-minutes`);
+        }
+        lastVisibilityChange = now;
+      } else if (document.hidden) {
+        lastVisibilityChange = Date.now();
       }
     };
 
@@ -668,7 +688,7 @@ export function useAuth() {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
-  }, [validateSession, authState.sessionExpiresAt, authState.isAuthenticated, authState.user?.lastLogin, logout, setError, refreshSession]);
+  }, [authState.user, authState.isAuthenticated, authState.isLoading, initialAuthState, validateSession, authState.sessionExpiresAt, authState.user?.lastLogin, logout, setError, refreshSession]);
 
   // Enhanced OTP sending with OSLOJS integration and rate limiting
   const sendOTP = useCallback(async (email: string) => {

@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, ReactNode } from 'react';
 import { useAuth, AuthState, LoginCredentials, AdminLoginCredentials, User, AuthResult } from '@/hooks/use-auth';
+import { ServerAuthState } from '@/lib/auth-server-actions';
 
 interface AuthContextType extends AuthState {
   loginStudent: (credentials: LoginCredentials) => Promise<AuthResult>;
@@ -19,8 +20,14 @@ interface AuthContextType extends AuthState {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const auth = useAuth();
+export function AuthProvider({ 
+  children, 
+  initialAuthState 
+}: { 
+  children: ReactNode;
+  initialAuthState?: ServerAuthState;
+}) {
+  const auth = useAuth(initialAuthState);
 
   return (
     <AuthContext.Provider value={auth}>

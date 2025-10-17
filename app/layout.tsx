@@ -3,7 +3,7 @@ import { Geist, Geist_Mono, Noto_Sans_Arabic } from "next/font/google";
 import { Toaster } from "sonner";
 
 import { ConvexClientProvider } from "@/providers/convex-provider";
-import { AuthProvider } from "@/providers/auth-provider";
+import AuthLayoutWrapper from "@/components/auth/auth-layout-wrapper";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -38,9 +38,9 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} ${notoSansArabic.variable} antialiased`}
       >
         <ConvexClientProvider>
-          <AuthProvider>
+          <AuthLayoutWrapper>
             {children}
-          </AuthProvider>
+          </AuthLayoutWrapper>
         </ConvexClientProvider>
         <Toaster position="top-center" />
       </body>

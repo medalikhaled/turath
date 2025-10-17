@@ -8,6 +8,10 @@ const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
 export async function GET(request: NextRequest) {
   try {
+    // Log validation reason for monitoring optimization effectiveness
+    const validationReason = request.headers.get('X-Validation-Reason') || 'unknown';
+    console.info('Auth validation requested:', validationReason);
+    
     // Get token from Authorization header or cookies
     const authHeader = request.headers.get('authorization');
     const cookieToken = request.cookies.get('auth-token')?.value;
