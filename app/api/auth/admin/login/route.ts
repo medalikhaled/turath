@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ConvexHttpClient } from 'convex/browser';
 import { api } from '@/convex/_generated/api';
-import { generateToken, TokenPayload } from '@/lib/auth';
+import { SessionService } from '@/lib/oslojs-services';
+import { AuthErrorHandler, AuthErrorCode } from '@/lib/auth-error-handler';
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
@@ -9,61 +10,93 @@ export async function POST(request: NextRequest) {
   try {
     const { email, otp } = await request.json();
 
+    // Enhanced input validation using AuthErrorHandler
     if (!email || !otp) {
+      const error = AuthErrorHandler.createError(AuthErrorCode.MISSING_REQUIRED_FIELD, {
+        field: !email ? 'email' : 'otp'
+      });
       return NextResponse.json(
-        { error: 'البريد الإلكتروني ورمز التحقق مطلوبان', code: 'MISSING_FIELDS' },
-        { status: 400 }
+        { error: error.messageAr, code: error.code },
+        { status: error.statusCode }
       );
     }
 
-    // Verify OTP using existing OTP system
-    const otpResult = await convex.mutation(api.otp.verifyAdminOTP, {
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      const error = AuthErrorHandler.createError(AuthErrorCode.INVALID_EMAIL);
+      return NextResponse.json(
+        { error: error.messageAr, code: error.code },
+        { status: error.statusCode }
+      );
+    }
+
+    // Verify OTP using Convex
+    const otpVerification = await convex.mutation(api.authFunctions.verifyAdminOTP, {
       email: email.toLowerCase().trim(),
       otp,
     });
 
-    if (!otpResult.success) {
+    if (!otpVerification.success) {
+      let errorCode = AuthErrorCode.OTP_INVALID;
+
+      if (otpVerification.error === 'OTP_EXPIRED') {
+        errorCode = AuthErrorCode.OTP_EXPIRED;
+      } else if (otpVerification.error === 'TOO_MANY_ATTEMPTS') {
+        errorCode = AuthErrorCode.TOO_MANY_ATTEMPTS;
+      }
+
+      const error = AuthErrorHandler.createError(errorCode);
       return NextResponse.json(
-        { error: 'رمز التحقق غير صحيح أو منتهي الصلاحية', code: 'INVALID_OTP' },
-        { status: 401 }
+        {
+          error: error.messageAr,
+          code: error.code,
+        },
+        { status: error.statusCode }
       );
     }
 
-    // Get admin user data
-    const adminUser = await convex.query(api.auth.getAdminByEmail, {
+    // Check if email is admin
+    const isAdminResult = await convex.query(api.authFunctions.isAdminEmail, {
       email: email.toLowerCase().trim(),
     });
 
-    if (!adminUser) {
+    if (!isAdminResult.isAdmin) {
+      const error = AuthErrorHandler.createError(AuthErrorCode.ADMIN_NOT_FOUND);
       return NextResponse.json(
-        { error: 'المستخدم غير موجود أو غير نشط', code: 'USER_NOT_FOUND' },
-        { status: 404 }
+        { error: error.messageAr, code: error.code },
+        { status: error.statusCode }
       );
     }
 
-    // Generate JWT token for admin
-    const tokenPayload: TokenPayload = {
-      userId: adminUser.id,
-      email: adminUser.email,
+    // Generate JWT token using OSLOJS SessionService with 24-hour expiration for admin
+    const tokenResult = await SessionService.createSession({
+      userId: email, // Use email as userId for admins
+      email: email.toLowerCase().trim(),
       role: 'admin',
-      sessionType: 'admin',
-    };
+    });
 
-    const token = await generateToken(tokenPayload, '24h'); // 24 hours for admin
+    const token = tokenResult.token;
+
+    // Create admin session in Convex
+    await convex.mutation(api.authFunctions.createAdminSession, {
+      email: email.toLowerCase().trim(),
+      sessionId: token,
+      expiresAt: tokenResult.expiresAt.getTime(),
+    });
 
     // Create response with token
     const response = NextResponse.json({
       success: true,
       message: 'تم تسجيل الدخول بنجاح',
       user: {
-        id: adminUser.id,
-        email: adminUser.email,
-        name: adminUser.name,
-        role: adminUser.role,
+        id: email,
+        email: email.toLowerCase().trim(),
+        role: 'admin',
       },
       token,
-      sessionId: otpResult.sessionId, // Keep compatibility with existing OTP system
-      expiresAt: otpResult.expiresAt,
+      sessionType: 'admin',
+      expiresAt: tokenResult.expiresAt.getTime(),
     });
 
     // Set HTTP-only cookie for additional security
@@ -78,31 +111,17 @@ export async function POST(request: NextRequest) {
     return response;
   } catch (error: any) {
     console.error('Admin login error:', error);
-    
-    if (error.message?.includes('INVALID_OTP')) {
-      return NextResponse.json(
-        { error: 'رمز التحقق غير صحيح', code: 'INVALID_OTP' },
-        { status: 401 }
-      );
-    }
 
-    if (error.message?.includes('EXPIRED_OTP')) {
-      return NextResponse.json(
-        { error: 'رمز التحقق منتهي الصلاحية', code: 'EXPIRED_OTP' },
-        { status: 401 }
-      );
-    }
-
-    if (error.message?.includes('MAX_ATTEMPTS_EXCEEDED')) {
-      return NextResponse.json(
-        { error: 'تم تجاوز عدد المحاولات المسموح', code: 'MAX_ATTEMPTS_EXCEEDED' },
-        { status: 429 }
-      );
-    }
+    // Use AuthErrorHandler for comprehensive error handling
+    const authError = AuthErrorHandler.handleError(error, 'admin-login');
 
     return NextResponse.json(
-      { error: 'حدث خطأ في تسجيل الدخول', code: 'LOGIN_ERROR' },
-      { status: 500 }
+      {
+        error: authError.messageAr,
+        code: authError.code,
+        details: authError.details
+      },
+      { status: authError.statusCode || 500 }
     );
   }
 }

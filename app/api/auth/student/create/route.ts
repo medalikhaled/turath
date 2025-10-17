@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ConvexHttpClient } from 'convex/browser';
 import { api } from '@/convex/_generated/api';
-import { hashPassword } from '@/lib/auth';
+import { PasswordService } from '@/lib/oslojs-services';
+import { AuthErrorHandler, AuthErrorCode } from '@/lib/auth-error-handler';
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
@@ -9,18 +10,48 @@ export async function POST(request: NextRequest) {
   try {
     const { email, name, password, courses } = await request.json();
 
+    // Enhanced input validation using AuthErrorHandler
     if (!email || !name || !password) {
+      const error = AuthErrorHandler.createError(AuthErrorCode.MISSING_REQUIRED_FIELD, {
+        field: !email ? 'email' : !name ? 'name' : 'password'
+      });
       return NextResponse.json(
-        { error: 'البريد الإلكتروني والاسم وكلمة المرور مطلوبة', code: 'MISSING_FIELDS' },
-        { status: 400 }
+        { error: error.messageAr, code: error.code },
+        { status: error.statusCode }
       );
     }
 
-    // Hash the password
-    const hashedPassword = await hashPassword(password);
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      const error = AuthErrorHandler.createError(AuthErrorCode.INVALID_EMAIL);
+      return NextResponse.json(
+        { error: error.messageAr, code: error.code },
+        { status: error.statusCode }
+      );
+    }
 
-    // Create student with hashed password
-    const result = await convex.mutation(api.studentAuth.createStudentWithPassword, {
+    // Validate password strength using OSLOJS PasswordService
+    const passwordValidation = PasswordService.validatePasswordStrength(password);
+    if (!passwordValidation.isValid) {
+      const error = AuthErrorHandler.createError(AuthErrorCode.WEAK_PASSWORD, {
+        validationErrors: passwordValidation.errorsAr.map((msg: string, index: number) => ({
+          field: 'password',
+          message: passwordValidation.errors[index],
+          messageAr: msg
+        }))
+      });
+      return NextResponse.json(
+        { error: error.messageAr, code: error.code, details: error.details },
+        { status: error.statusCode }
+      );
+    }
+
+    // Hash the password using OSLOJS PasswordService
+    const hashedPassword = await PasswordService.hashPassword(password);
+
+    // Create student with hashed password using students mutation
+    const result = await convex.mutation(api.students.createStudentWithUser, {
       email: email.toLowerCase().trim(),
       name,
       password: hashedPassword,
@@ -29,22 +60,23 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: result.message,
+      message: 'Student created successfully',
       studentId: result.studentId,
+      userId: result.userId,
     });
   } catch (error: any) {
     console.error('Student creation error:', error);
 
-    if (error.message?.includes('STUDENT_EXISTS')) {
-      return NextResponse.json(
-        { error: 'الطالب موجود بالفعل', code: 'STUDENT_EXISTS' },
-        { status: 409 }
-      );
-    }
-
+    // Use AuthErrorHandler for comprehensive error handling
+    const authError = AuthErrorHandler.handleError(error, 'student-creation');
+    
     return NextResponse.json(
-      { error: 'حدث خطأ في إنشاء حساب الطالب', code: 'CREATION_ERROR' },
-      { status: 500 }
+      { 
+        error: authError.messageAr, 
+        code: authError.code,
+        details: authError.details 
+      },
+      { status: authError.statusCode || 500 }
     );
   }
 }

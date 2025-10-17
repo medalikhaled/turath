@@ -18,9 +18,9 @@ export async function POST(request: NextRequest) {
         const { payload } = await jwtVerify(token, JWT_SECRET);
         
         if (payload.email && payload.role === 'admin') {
-          // Logout admin session in database
-          await fetchMutation(api.otp.logoutAdmin, {
-            email: payload.email as string,
+          // Revoke admin session in database
+          await fetchMutation(api.authFunctions.revokeSession, {
+            sessionId: token,
           });
         }
       } catch (jwtError) {

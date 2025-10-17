@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
 
     if (!result.success || !result.invitationData) {
       return NextResponse.json(
-        { error: 'فشل في إرسال الدعوة', code: 'INVITATION_FAILED' },
+        { error: 'Failed to send invitation', code: 'INVITATION_FAILED' },
         { status: 500 }
       );
     }

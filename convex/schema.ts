@@ -6,38 +6,25 @@ export default defineSchema({
   // User Model for authentication
   users: defineTable({
     email: v.string(),
-    passwordHash: v.string(),
+    passwordHash: v.optional(v.string()), // Only for students
     role: v.union(v.literal("admin"), v.literal("student")),
     isActive: v.boolean(),
     createdAt: v.number(),
+    updatedAt: v.number(),
   })
     .index("by_email", ["email"])
-    .index("by_role", ["role"])
-    .index("by_active", ["isActive"]),
+    .index("by_role", ["role"]),
 
-  // Student Model (supports both old and new formats during migration)
+  // Student Model
   students: defineTable({
-    // New format fields
-    userId: v.optional(v.id("users")), // Link to auth system (optional for migration)
+    userId: v.id("users"),
     name: v.string(),
-    email: v.string(),
-    phone: v.optional(v.string()),
     courses: v.array(v.id("courses")),
-    isActive: v.boolean(),
-    invitationSent: v.optional(v.boolean()), // Optional for migration
-    lastLogin: v.optional(v.number()),
     enrollmentDate: v.number(),
-    createdAt: v.optional(v.number()), // Optional for migration
-    updatedAt: v.optional(v.number()), // Optional for migration
-    
-    // Legacy fields (for backward compatibility)
-    password: v.optional(v.string()), // Legacy password field
-    role: v.optional(v.union(v.literal("student"), v.literal("admin"))), // Legacy role field
+    lastLoginAt: v.optional(v.number()),
+    requiresPasswordChange: v.boolean(),
   })
-    .index("by_user_id", ["userId"])
-    .index("by_email", ["email"])
-    .index("by_active", ["isActive"])
-    .index("by_role", ["role"]), // Keep legacy index
+    .index("by_user_id", ["userId"]),
 
   // Course Model
   courses: defineTable({
@@ -108,9 +95,8 @@ export default defineSchema({
     email: v.string(),
     otp: v.string(),
     expiresAt: v.number(),
-    createdAt: v.number(),
     attempts: v.number(),
-    isUsed: v.boolean(),
+    createdAt: v.number(),
   })
     .index("by_email", ["email"])
     .index("by_expires_at", ["expiresAt"]),
@@ -118,10 +104,12 @@ export default defineSchema({
   // Admin Sessions Model
   adminSessions: defineTable({
     email: v.string(),
+    sessionId: v.string(),
     expiresAt: v.number(),
     createdAt: v.number(),
     lastAccessAt: v.number(),
   })
     .index("by_email", ["email"])
+    .index("by_session_id", ["sessionId"])
     .index("by_expires_at", ["expiresAt"]),
 });

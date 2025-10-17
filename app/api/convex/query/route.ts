@@ -15,10 +15,9 @@ export async function POST(request: NextRequest) {
 
     // Map query names to actual API functions
     const queryMap: Record<string, any> = {
-      'otp:getOTPStats': api.otp.getOTPStats,
-      'otp:isAdminEmail': api.otp.isAdminEmail,
-      'otp:validateAdminSession': api.otp.validateAdminSession,
-      'otp:getAdminEmails': api.otp.getAdminEmails,
+      'auth:isAdminEmail': api.authFunctions.isAdminEmail,
+      'auth:validateAdminSession': api.authFunctions.validateAdminSession,
+      'auth:getUserByEmail': api.authFunctions.getUserByEmail,
     };
 
     const queryFunction = queryMap[query];

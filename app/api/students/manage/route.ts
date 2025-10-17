@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
     if (error instanceof Error) {
       if (error.message.includes('already exists') || error.message.includes('موجود')) {
         return NextResponse.json(
-          { error: 'يوجد مستخدم بهذا البريد الإلكتروني بالفعل', code: 'EMAIL_EXISTS' },
+          { error: 'User with this email already exists', code: 'EMAIL_EXISTS' },
           { status: 409 }
         );
       }

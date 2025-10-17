@@ -16,8 +16,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Use the existing OTP generation function
-    const result = await convex.mutation(api.otp.generateAdminOTP, {
+    const result = await convex.mutation(api.authFunctions.storeAdminOTP, {
       email: email.toLowerCase().trim(),
+      otp: Math.floor(100000 + Math.random() * 900000).toString(),
+      expiresAt: Date.now() + (15 * 60 * 1000),
     });
 
     return NextResponse.json(result);
@@ -26,7 +28,7 @@ export async function POST(request: NextRequest) {
     
     if (error.message?.includes('UNAUTHORIZED')) {
       return NextResponse.json(
-        { error: 'البريد الإلكتروني غير مصرح له بالوصول للوحة الإدارة', code: 'UNAUTHORIZED' },
+        { error: 'Email not authorized for admin access', code: 'UNAUTHORIZED' },
         { status: 403 }
       );
     }

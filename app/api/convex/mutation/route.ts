@@ -15,11 +15,13 @@ export async function POST(request: NextRequest) {
 
     // Map mutation names to actual API functions
     const mutationMap: Record<string, any> = {
-      'otp:generateAdminOTP': api.otp.generateAdminOTP,
-      'otp:verifyAdminOTP': api.otp.verifyAdminOTP,
-      'otp:updateAdminSessionAccess': api.otp.updateAdminSessionAccess,
-      'otp:logoutAdmin': api.otp.logoutAdmin,
-      'otp:cleanupExpiredData': api.otp.cleanupExpiredData,
+      'auth:storeAdminOTP': api.authFunctions.storeAdminOTP,
+      'auth:verifyAdminOTP': api.authFunctions.verifyAdminOTP,
+      'auth:createAdminSession': api.authFunctions.createAdminSession,
+      'auth:updateSessionAccess': api.authFunctions.updateSessionAccess,
+      'auth:revokeSession': api.authFunctions.revokeSession,
+      'auth:cleanupExpiredOTPs': api.authFunctions.cleanupExpiredOTPs,
+      'auth:cleanupExpiredSessions': api.authFunctions.cleanupExpiredSessions,
     };
 
     const mutationFunction = mutationMap[mutation];

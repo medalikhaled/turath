@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ConvexHttpClient } from 'convex/browser';
 import { api } from '@/convex/_generated/api';
-import { verifyToken } from '@/lib/auth';
+import { SessionService } from '@/lib/oslojs-services';
+import { AuthErrorHandler } from '@/lib/auth-error-handler';
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
@@ -10,31 +11,38 @@ export async function POST(request: NextRequest) {
     // Get token from Authorization header or cookies
     const authHeader = request.headers.get('authorization');
     const cookieToken = request.cookies.get('auth-token')?.value;
-    
-    const token = authHeader?.replace('Bearer ', '') || cookieToken;
-    
-    if (token) {
-      // Verify token to get user info
-      const payload = await verifyToken(token);
-      
-      if (payload) {
-        // Call logout mutation for cleanup
-        await convex.mutation(api.auth.logout, {
-          userId: payload.userId,
-          sessionType: payload.sessionType,
-        });
 
-        // If it's an admin session, also clean up the OTP session
-        if (payload.role === 'admin') {
-          try {
-            // Logout from OTP system using email
-            await convex.mutation(api.otp.logoutAdmin, {
-              email: payload.email,
-            });
-          } catch (error) {
-            console.error('Error cleaning up admin OTP session:', error);
-            // Continue with logout even if OTP cleanup fails
+    const token = authHeader?.replace('Bearer ', '') || cookieToken;
+
+    if (token) {
+      // Verify token using OSLOJS SessionService to get user info
+      const sessionValidation = await SessionService.verifySession(token);
+
+      if (sessionValidation.isValid && sessionValidation.payload) {
+        const payload = sessionValidation.payload;
+
+        try {
+          // Revoke session if admin
+          if (payload.role === 'admin') {
+            // TODO: For admin, we might want to revoke the session in Convex
+            // For now, just clean up client-side
           }
+
+          // If it's an admin session, also clean up the OTP session
+          if (payload.role === 'admin') {
+            try {
+              // Revoke admin session in Convex
+              await convex.mutation(api.authFunctions.revokeSession, {
+                sessionId: token,
+              });
+            } catch (error) {
+              console.error('Error cleaning up admin OTP session:', error);
+              // Continue with logout even if OTP cleanup fails
+            }
+          }
+        } catch (convexError) {
+          console.error('Error during Convex logout cleanup:', convexError);
+          // Continue with logout even if Convex cleanup fails
         }
       }
     }
@@ -45,32 +53,44 @@ export async function POST(request: NextRequest) {
       message: 'تم تسجيل الخروج بنجاح',
     });
 
-    // Clear auth cookie
-    response.cookies.set('auth-token', '', {
+    // Clear all auth-related cookies
+    const cookieOptions = {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: 'lax' as const,
       maxAge: 0,
       path: '/',
-    });
+    };
+
+    response.cookies.set('auth-token', '', cookieOptions);
+    response.cookies.set('admin-session', '', cookieOptions); // Clear legacy admin session cookie if exists
 
     return response;
   } catch (error: any) {
     console.error('Logout error:', error);
-    
-    // Even if there's an error, we should clear the cookie
+
+    // Use AuthErrorHandler for logging but still proceed with logout
+    AuthErrorHandler.handleError(error, 'logout');
+
+    // Even if there's an error, we should clear the cookies and return success
+    // This ensures the user can always log out from the frontend
     const response = NextResponse.json({
       success: true,
       message: 'تم تسجيل الخروج بنجاح',
+      warning: 'Some cleanup operations may have failed, but logout was successful'
     });
 
-    response.cookies.set('auth-token', '', {
+    // Clear all auth-related cookies
+    const cookieOptions = {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: 'lax' as const,
       maxAge: 0,
       path: '/',
-    });
+    };
+
+    response.cookies.set('auth-token', '', cookieOptions);
+    response.cookies.set('admin-session', '', cookieOptions);
 
     return response;
   }

@@ -1,14 +1,21 @@
 "use client";
 
 import React, { createContext, useContext, ReactNode } from 'react';
-import { useAuth, AuthState, LoginCredentials, AdminLoginCredentials, User } from '@/hooks/use-auth';
+import { useAuth, AuthState, LoginCredentials, AdminLoginCredentials, User, AuthResult } from '@/hooks/use-auth';
+import { AuthError } from '@/lib/auth-error-handler';
 
 interface AuthContextType extends AuthState {
-  loginStudent: (credentials: LoginCredentials) => Promise<{ success: boolean; error?: string; code?: string }>;
-  loginAdmin: (credentials: AdminLoginCredentials) => Promise<{ success: boolean; error?: string; code?: string; sessionId?: string }>;
+  loginStudent: (credentials: LoginCredentials) => Promise<AuthResult>;
+  loginAdmin: (credentials: AdminLoginCredentials) => Promise<AuthResult>;
   logout: () => Promise<void>;
   validateSession: () => Promise<boolean>;
   requireAuth: (requiredRole?: 'student' | 'admin') => boolean;
+  refreshSession: () => Promise<boolean>;
+  sendOTP: (email: string) => Promise<{ success: boolean; message?: string; error?: string; expiresIn?: number; retryAfter?: number }>;
+  clearError: () => void;
+  // Enhanced loading state getters for better UX
+  isPerformingAuth: boolean;
+  canPerformActions: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);

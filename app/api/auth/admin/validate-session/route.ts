@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
 
     if (!token) {
       return NextResponse.json(
-        { error: 'لا توجد جلسة نشطة', code: 'NO_SESSION' },
+        { error: 'No active session found', code: 'NO_SESSION' },
         { status: 401 }
       );
     }
@@ -39,11 +39,11 @@ export async function GET(request: NextRequest) {
     }
 
     // Validate session in database
-    const sessionValidation = await fetchQuery(api.otp.validateAdminSession, {
-      email: decoded.email,
+    const sessionValidation = await fetchQuery(api.authFunctions.validateAdminSession, {
+      sessionId: token,
     });
 
-    if (!sessionValidation.isValid) {
+    if (!sessionValidation.valid) {
       // Clear invalid cookie
       const response = NextResponse.json(
         { error: 'انتهت صلاحية الجلسة', code: 'SESSION_EXPIRED' },
@@ -55,8 +55,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Update session last access time
-    await fetchMutation(api.otp.updateAdminSessionAccess, {
-      email: decoded.email,
+    await fetchMutation(api.authFunctions.updateSessionAccess, {
+      sessionId: token,
     });
 
     return NextResponse.json({
@@ -66,7 +66,10 @@ export async function GET(request: NextRequest) {
         role: 'admin',
         sessionId: decoded.sessionId,
       },
-      session: sessionValidation.session,
+      session: {
+        email: sessionValidation.email,
+        expiresAt: sessionValidation.expiresAt,
+      },
     });
 
   } catch (error: any) {

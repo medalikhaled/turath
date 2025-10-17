@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ConvexHttpClient } from 'convex/browser';
 import { api } from '@/convex/_generated/api';
-import { verifyPassword, generateToken, TokenPayload } from '@/lib/auth';
+import { SessionService } from '@/lib/oslojs-services';
+import { AuthErrorHandler, AuthErrorCode } from '@/lib/auth-error-handler';
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
@@ -9,58 +10,62 @@ export async function POST(request: NextRequest) {
     try {
         const { email, password } = await request.json();
 
-        // Enhanced input validation
+        // Enhanced input validation using AuthErrorHandler
         if (!email || !password) {
+            const error = AuthErrorHandler.createError(AuthErrorCode.MISSING_REQUIRED_FIELD);
             return NextResponse.json(
-                { error: 'البريد الإلكتروني وكلمة المرور مطلوبان', code: 'MISSING_FIELDS' },
-                { status: 400 }
+                { error: error.messageAr, code: error.code },
+                { status: error.statusCode }
             );
         }
 
         // Validate email format
+        const emailValidationError = AuthErrorHandler.createError(AuthErrorCode.INVALID_EMAIL);
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(email)) {
             return NextResponse.json(
-                { error: 'صيغة البريد الإلكتروني غير صحيحة', code: 'INVALID_EMAIL_FORMAT' },
-                { status: 400 }
+                { error: emailValidationError.messageAr, code: emailValidationError.code },
+                { status: emailValidationError.statusCode }
             );
         }
 
-        // Verify credentials using the enhanced function
-        const result = await convex.mutation(api.students.verifyStudentCredentials, {
+        // Get student credentials from Convex
+        const studentData = await convex.query(api.authFunctions.getStudentCredentials, {
             email: email.toLowerCase().trim(),
-            password,
         });
 
-        if (!result) {
+        if (!studentData) {
+            const error = AuthErrorHandler.createError(AuthErrorCode.INVALID_CREDENTIALS);
             return NextResponse.json(
-                { error: 'البريد الإلكتروني أو كلمة المرور غير صحيحة', code: 'INVALID_CREDENTIALS' },
-                { status: 401 }
+                { error: error.messageAr, code: error.code },
+                { status: error.statusCode }
             );
         }
 
-        const { user, student } = result;
+        // Verify password using OSLOJS
+        const { PasswordService } = await import('@/lib/oslojs-services');
+        const isPasswordValid = await PasswordService.verifyPassword(password, studentData.passwordHash || '');
 
-        // Generate JWT token with enhanced payload
-        const tokenPayload: TokenPayload = {
-            userId: student._id,
-            email: student.email,
+        if (!isPasswordValid) {
+            const error = AuthErrorHandler.createError(AuthErrorCode.INVALID_CREDENTIALS);
+            return NextResponse.json(
+                { error: error.messageAr, code: error.code },
+                { status: error.statusCode }
+            );
+        }
+
+        // Generate JWT token using OSLOJS SessionService
+        const tokenResult = await SessionService.createSession({
+            userId: studentData.studentId,
+            email: studentData.email,
             role: 'student',
-            sessionType: 'student',
-        };
+        });
 
-        const token = await generateToken(tokenPayload);
+        const token = tokenResult.token;
 
-        // Create session in Convex with enhanced data
-        await convex.mutation(api.auth.createStudentSession, {
-            studentId: student._id,
-            sessionData: {
-                userId: student._id,
-                email: student.email,
-                role: 'student',
-                sessionType: 'student',
-                expiresAt: Date.now() + (7 * 24 * 60 * 60 * 1000), // 7 days
-            },
+        // Update student last login
+        await convex.mutation(api.authFunctions.updateStudentLastLogin, {
+            studentId: studentData.studentId,
         });
 
         // Create response with enhanced user data
@@ -68,17 +73,15 @@ export async function POST(request: NextRequest) {
             success: true,
             message: 'تم تسجيل الدخول بنجاح',
             user: {
-                id: student._id,
-                email: student.email,
-                name: student.name,
+                id: studentData.studentId,
+                email: studentData.email,
+                name: studentData.name,
                 role: 'student',
-                courses: student.courses,
-                enrollmentDate: student.enrollmentDate,
-                lastLogin: student.lastLogin,
+                courses: studentData.courses,
             },
             token,
             sessionType: 'student',
-            expiresAt: Date.now() + (7 * 24 * 60 * 60 * 1000),
+            expiresAt: tokenResult.expiresAt.getTime(),
         });
 
         // Set HTTP-only cookie with enhanced security
@@ -106,39 +109,16 @@ export async function POST(request: NextRequest) {
     } catch (error: any) {
         console.error('Student login error:', error);
 
-        // Enhanced error handling with specific error codes
-        if (error.message?.includes('INVALID_CREDENTIALS')) {
-            return NextResponse.json(
-                { error: 'البريد الإلكتروني أو كلمة المرور غير صحيحة', code: 'INVALID_CREDENTIALS' },
-                { status: 401 }
-            );
-        }
-
-        if (error.message?.includes('STUDENT_INACTIVE')) {
-            return NextResponse.json(
-                { error: 'حساب الطالب غير نشط. يرجى التواصل مع الإدارة', code: 'STUDENT_INACTIVE' },
-                { status: 403 }
-            );
-        }
-
-        if (error.message?.includes('INVALID_EMAIL_FORMAT')) {
-            return NextResponse.json(
-                { error: 'صيغة البريد الإلكتروني غير صحيحة', code: 'INVALID_EMAIL_FORMAT' },
-                { status: 400 }
-            );
-        }
-
-        // Rate limiting error (if implemented)
-        if (error.message?.includes('TOO_MANY_ATTEMPTS')) {
-            return NextResponse.json(
-                { error: 'تم تجاوز عدد المحاولات المسموح. يرجى المحاولة لاحقاً', code: 'TOO_MANY_ATTEMPTS' },
-                { status: 429 }
-            );
-        }
+        // Use AuthErrorHandler for comprehensive error handling
+        const authError = AuthErrorHandler.handleError(error, 'student-login');
 
         return NextResponse.json(
-            { error: 'حدث خطأ في تسجيل الدخول. يرجى المحاولة مرة أخرى', code: 'LOGIN_ERROR' },
-            { status: 500 }
+            {
+                error: authError.messageAr,
+                code: authError.code,
+                details: authError.details
+            },
+            { status: authError.statusCode || 500 }
         );
     }
 }

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ConvexHttpClient } from 'convex/browser';
 import { api } from '@/convex/_generated/api';
-import { hashPassword } from '@/lib/auth';
+import { PasswordService } from '@/lib/oslojs-services';
+import { AuthErrorHandler, AuthErrorCode } from '@/lib/auth-error-handler';
 import { withAdminAuth } from '@/lib/auth-middleware';
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
@@ -10,18 +11,38 @@ export const POST = withAdminAuth(async (request: NextRequest) => {
   try {
     const { studentId, newPassword } = await request.json();
 
+    // Enhanced input validation using AuthErrorHandler
     if (!studentId || !newPassword) {
+      const error = AuthErrorHandler.createError(AuthErrorCode.MISSING_REQUIRED_FIELD, {
+        field: !studentId ? 'studentId' : 'newPassword'
+      });
       return NextResponse.json(
-        { error: 'معرف الطالب وكلمة المرور الجديدة مطلوبان', code: 'MISSING_FIELDS' },
-        { status: 400 }
+        { error: error.messageAr, code: error.code },
+        { status: error.statusCode }
       );
     }
 
-    // Hash the new password
-    const hashedPassword = await hashPassword(newPassword);
+    // Validate password strength using OSLOJS PasswordService
+    const passwordValidation = PasswordService.validatePasswordStrength(newPassword);
+    if (!passwordValidation.isValid) {
+      const error = AuthErrorHandler.createError(AuthErrorCode.WEAK_PASSWORD, {
+        validationErrors: passwordValidation.errorsAr.map((msg: string, index: number) => ({
+          field: 'newPassword',
+          message: passwordValidation.errors[index],
+          messageAr: msg
+        }))
+      });
+      return NextResponse.json(
+        { error: error.messageAr, code: error.code, details: error.details },
+        { status: error.statusCode }
+      );
+    }
 
-    // Update student password
-    const result = await convex.mutation(api.studentAuth.updateStudentPassword, {
+    // Hash the new password using OSLOJS PasswordService
+    const hashedPassword = await PasswordService.hashPassword(newPassword);
+
+    // Update student password using students mutation
+    const result = await convex.mutation(api.students.resetStudentPassword, {
       studentId,
       newPassword: hashedPassword,
     });
@@ -33,16 +54,16 @@ export const POST = withAdminAuth(async (request: NextRequest) => {
   } catch (error: any) {
     console.error('Password update error:', error);
 
-    if (error.message?.includes('STUDENT_NOT_FOUND')) {
-      return NextResponse.json(
-        { error: 'الطالب غير موجود', code: 'STUDENT_NOT_FOUND' },
-        { status: 404 }
-      );
-    }
-
+    // Use AuthErrorHandler for comprehensive error handling
+    const authError = AuthErrorHandler.handleError(error, 'student-password-update');
+    
     return NextResponse.json(
-      { error: 'حدث خطأ في تحديث كلمة المرور', code: 'UPDATE_ERROR' },
-      { status: 500 }
+      { 
+        error: authError.messageAr, 
+        code: authError.code,
+        details: authError.details 
+      },
+      { status: authError.statusCode || 500 }
     );
   }
 });

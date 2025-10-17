@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyToken, TokenPayload } from './auth';
+import { validateSession, AuthErrorCode, type SessionPayload } from './auth-service';
 
 export interface AuthenticatedRequest extends NextRequest {
-  user?: TokenPayload;
+  user?: SessionPayload;
 }
 
 // Middleware to check authentication
@@ -17,28 +17,38 @@ export function withAuth(handler: (req: AuthenticatedRequest) => Promise<NextRes
       
       if (!token) {
         return NextResponse.json(
-          { error: 'غير مصرح - لم يتم العثور على رمز المصادقة', code: 'NO_TOKEN' },
+          { 
+            error: 'غير مصرح - لم يتم العثور على رمز المصادقة',
+            code: AuthErrorCode.UNAUTHORIZED 
+          },
           { status: 401 }
         );
       }
 
       // Verify token
-      const payload = await verifyToken(token);
-      if (!payload) {
+      const sessionResult = await validateSession(token);
+      if (!sessionResult.success || !sessionResult.data) {
         return NextResponse.json(
-          { error: 'غير مصرح - رمز المصادقة غير صالح', code: 'INVALID_TOKEN' },
+          { 
+            error: sessionResult.error?.messageAr || 'غير مصرح - رمز المصادقة غير صالح',
+            code: sessionResult.error?.code || AuthErrorCode.SESSION_EXPIRED 
+          },
           { status: 401 }
         );
       }
 
       // Add user to request
-      (req as AuthenticatedRequest).user = payload;
+      (req as AuthenticatedRequest).user = sessionResult.data;
       
       return handler(req as AuthenticatedRequest);
     } catch (error) {
       console.error('Auth middleware error:', error);
+      
       return NextResponse.json(
-        { error: 'خطأ في المصادقة', code: 'AUTH_ERROR' },
+        { 
+          error: 'خطأ في المصادقة',
+          code: AuthErrorCode.UNAUTHORIZED 
+        },
         { status: 500 }
       );
     }
@@ -50,7 +60,10 @@ export function withAdminAuth(handler: (req: AuthenticatedRequest) => Promise<Ne
   return withAuth(async (req: AuthenticatedRequest): Promise<NextResponse> => {
     if (req.user?.role !== 'admin') {
       return NextResponse.json(
-        { error: 'غير مصرح - يتطلب صلاحيات إدارية', code: 'ADMIN_REQUIRED' },
+        { 
+          error: 'غير مصرح - يتطلب صلاحيات مدير',
+          code: AuthErrorCode.UNAUTHORIZED 
+        },
         { status: 403 }
       );
     }
@@ -64,7 +77,10 @@ export function withStudentAuth(handler: (req: AuthenticatedRequest) => Promise<
   return withAuth(async (req: AuthenticatedRequest): Promise<NextResponse> => {
     if (req.user?.role !== 'student') {
       return NextResponse.json(
-        { error: 'غير مصرح - يتطلب صلاحيات طالب', code: 'STUDENT_REQUIRED' },
+        { 
+          error: 'غير مصرح - يتطلب صلاحيات طالب',
+          code: AuthErrorCode.UNAUTHORIZED 
+        },
         { status: 403 }
       );
     }

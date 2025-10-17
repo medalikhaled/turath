@@ -1,113 +1,103 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { api } from '../../../../../convex/_generated/api';
-import { fetchMutation } from 'convex/nextjs';
-import { SignJWT } from 'jose';
-
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'your-secret-key-change-in-production'
-);
+import { api } from '@/convex/_generated/api';
+import { SessionService } from '@/lib/oslojs-services';
 
 export async function POST(request: NextRequest) {
   try {
     const { email, otp } = await request.json();
 
-    if (!email || typeof email !== 'string') {
+    // Simple validation
+    if (!email || !otp) {
       return NextResponse.json(
-        { error: 'البريد الإلكتروني مطلوب', code: 'EMAIL_REQUIRED' },
+        { error: 'البريد الإلكتروني ورمز التحقق مطلوبان' },
         { status: 400 }
       );
     }
 
-    if (!otp || typeof otp !== 'string') {
+    // Check if email is admin using Convex query
+    const { fetchQuery } = await import('convex/nextjs');
+    const adminCheck = await fetchQuery(api.authFunctions.isAdminEmail, { email: email.toLowerCase().trim() });
+    if (!adminCheck.isAdmin) {
       return NextResponse.json(
-        { error: 'رمز التحقق مطلوب', code: 'OTP_REQUIRED' },
-        { status: 400 }
+        { error: 'Email not authorized for admin access' },
+        { status: 403 }
       );
     }
 
-    // Validate OTP format (6 digits)
-    if (!/^\d{6}$/.test(otp)) {
-      return NextResponse.json(
-        { error: 'رمز التحقق يجب أن يكون 6 أرقام', code: 'INVALID_OTP_FORMAT' },
-        { status: 400 }
-      );
-    }
-
-    // Verify OTP and create admin session
-    const verificationResult = await fetchMutation(api.otp.verifyAdminOTP, {
-      email,
-      otp,
+    // Verify OTP using Convex
+    const { fetchMutation } = await import('convex/nextjs');
+    const otpVerification = await fetchMutation(api.authFunctions.verifyAdminOTP, {
+      email: email.toLowerCase().trim(),
+      otp: otp
     });
 
-    if (!verificationResult.success) {
+    if (!otpVerification.success) {
       return NextResponse.json(
-        { error: 'فشل في التحقق من الرمز', code: 'VERIFICATION_FAILED' },
+        { error: 'Invalid or expired OTP code' },
         { status: 400 }
       );
     }
 
-    // Create JWT token for admin session
-    const token = await new SignJWT({
-      email: verificationResult.email,
+    // Create or update admin user record in database
+    const normalizedEmail = email.toLowerCase().trim();
+    try {
+      await fetchMutation(api.adminManagement.createOrUpdateAdminUser, {
+        email: normalizedEmail,
+      });
+    } catch (error) {
+      console.error('Failed to create/update admin user:', error);
+      return NextResponse.json(
+        { error: 'Failed to create admin session' },
+        { status: 500 }
+      );
+    }
+
+    // Create JWT token using SessionService
+    const tokenResult = await SessionService.createSession({
+      userId: normalizedEmail, // Use email as userId for admins
+      email: normalizedEmail,
       role: 'admin',
-      sessionType: 'admin',
-      sessionId: verificationResult.sessionId,
-      expiresAt: verificationResult.expiresAt,
-    })
-      .setProtectedHeader({ alg: 'HS256' })
-      .setIssuedAt()
-      .setExpirationTime('24h')
-      .sign(JWT_SECRET);
+    });
+
+    // Store session in Convex
+    await fetchMutation(api.authFunctions.createAdminSession, {
+      email: normalizedEmail,
+      sessionId: tokenResult.token,
+      expiresAt: tokenResult.expiresAt.getTime(),
+    });
 
     // Create response with secure cookie
     const response = NextResponse.json({
       success: true,
-      message: verificationResult.message,
+      message: 'تم تسجيل الدخول بنجاح',
       user: {
-        email: verificationResult.email,
+        id: normalizedEmail,
+        email: normalizedEmail,
+        name: 'مدير النظام',
         role: 'admin',
-        sessionId: verificationResult.sessionId,
       },
-      expiresAt: verificationResult.expiresAt,
+      token: tokenResult.token,
+      sessionType: 'admin',
+      expiresAt: tokenResult.expiresAt.getTime(),
     });
 
     // Set secure HTTP-only cookie
-    response.cookies.set('admin-session', token, {
+    response.cookies.set('auth-token', tokenResult.token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 24 * 60 * 60, // 24 hours in seconds
+      maxAge: 24 * 60 * 60, // 24 hours
       path: '/',
     });
 
     return response;
 
   } catch (error: any) {
-    console.error('Error in verify-otp API:', error);
-
-    // Handle Convex errors
-    if (error.data?.code) {
-      return NextResponse.json(
-        { error: error.data.message, code: error.data.code },
-        { status: 400 }
-      );
-    }
-
+    console.error('❌ Error in verify-otp API:', error);
     return NextResponse.json(
-      { error: 'حدث خطأ في الخادم. يرجى المحاولة مرة أخرى', code: 'INTERNAL_ERROR' },
-      { status: 500 }
+      { error: 'Invalid or expired OTP code' },
+      { status: 400 }
     );
   }
 }
 
-// Handle preflight requests for CORS
-export async function OPTIONS() {
-  return new NextResponse(null, {
-    status: 200,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
-    },
-  });
-}

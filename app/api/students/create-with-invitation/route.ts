@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       return NextResponse.json(
-        { error: 'صيغة البريد الإلكتروني غير صحيحة', code: 'INVALID_EMAIL_FORMAT' },
+        { error: 'Invalid email format', code: 'INVALID_EMAIL_FORMAT' },
         { status: 400 }
       );
     }
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
 
     if (!result.studentId) {
       return NextResponse.json(
-        { error: 'فشل في إنشاء حساب الطالب', code: 'STUDENT_CREATION_FAILED' },
+        { error: 'Failed to create student account', code: 'STUDENT_CREATION_FAILED' },
         { status: 500 }
       );
     }
@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
     if (error instanceof Error) {
       if (error.message.includes('already exists')) {
         return NextResponse.json(
-          { error: 'يوجد مستخدم بهذا البريد الإلكتروني بالفعل', code: 'EMAIL_EXISTS' },
+          { error: 'User with this email already exists', code: 'EMAIL_EXISTS' },
           { status: 409 }
         );
       }
