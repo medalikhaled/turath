@@ -42,9 +42,12 @@ export function useStudentDashboard(): DashboardReturn {
   }, [])
 
   // Get authenticated student dashboard data
+  // Works for both students and admins
   const dashboardData = useQuery(
-    api.dashboard.getStudentDashboardByStudentId,
-    mounted && isAuthenticated && user?.id && retryKey >= 0 ? { studentId: user.id as any } : "skip"
+    api.dashboard.getStudentDashboardByUserId,
+    mounted && isAuthenticated && user?.id && retryKey >= 0
+      ? { userId: user.id as any }
+      : "skip"
   )
 
   // Determine loading state
