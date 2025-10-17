@@ -8,16 +8,25 @@ const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, name, password, courses } = await request.json();
+    const { username, email, name, password, courses } = await request.json();
 
     // Enhanced input validation using AuthErrorHandler
-    if (!email || !name || !password) {
+    if (!username || !email || !name || !password) {
       const error = AuthErrorHandler.createError(AuthErrorCode.MISSING_REQUIRED_FIELD, {
-        field: !email ? 'email' : !name ? 'name' : 'password'
+        field: !username ? 'username' : !email ? 'email' : !name ? 'name' : 'password'
       });
       return NextResponse.json(
         { error: error.messageAr, code: error.code },
         { status: error.statusCode }
+      );
+    }
+
+    // Validate username format (alphanumeric, underscore, hyphen, 3-20 chars)
+    const usernameRegex = /^[a-zA-Z0-9_-]{3,20}$/;
+    if (!usernameRegex.test(username)) {
+      return NextResponse.json(
+        { error: 'اسم المستخدم يجب أن يكون بين 3-20 حرف ويحتوي على أحرف وأرقام فقط', code: 'INVALID_USERNAME' },
+        { status: 400 }
       );
     }
 
@@ -52,6 +61,7 @@ export async function POST(request: NextRequest) {
 
     // Create student with hashed password using students mutation
     const result = await convex.mutation(api.students.createStudentWithUser, {
+      username: username.toLowerCase().trim(),
       email: email.toLowerCase().trim(),
       name,
       password: hashedPassword,
@@ -63,6 +73,7 @@ export async function POST(request: NextRequest) {
       message: 'Student created successfully',
       studentId: result.studentId,
       userId: result.userId,
+      username: result.username,
     });
   } catch (error: any) {
     console.error('Student creation error:', error);

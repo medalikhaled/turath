@@ -31,7 +31,7 @@ export interface AuthState {
 }
 
 export interface LoginCredentials {
-  email: string;
+  identifier: string; // Can be username or email
   password: string;
 }
 
@@ -172,12 +172,12 @@ export function useAuth() {
       }));
 
       // Enhanced input validation using AuthErrorHandler
-      const emailValidationError = AuthErrorHandler.validateEmail(credentials.email);
-      if (emailValidationError) {
-        setError(emailValidationError);
-        toast.error(AuthErrorHandler.getUserMessage(emailValidationError, 'ar'));
+      if (!credentials.identifier || !credentials.identifier.trim()) {
+        const error = AuthErrorHandler.createError(AuthErrorCode.MISSING_REQUIRED_FIELD);
+        setError(error);
+        toast.error('يرجى إدخال اسم المستخدم أو البريد الإلكتروني');
         setAuthState(prev => ({ ...prev, isLoggingIn: false, isLoading: false }));
-        return { success: false, error: emailValidationError.messageAr, code: emailValidationError.code };
+        return { success: false, error: error.messageAr, code: error.code };
       }
 
       const passwordValidationError = AuthErrorHandler.validatePassword(credentials.password);
@@ -198,7 +198,7 @@ export function useAuth() {
         },
         credentials: 'include',
         body: JSON.stringify({
-          email: credentials.email.toLowerCase().trim(),
+          identifier: credentials.identifier.toLowerCase().trim(),
           password: credentials.password,
           timestamp: Date.now(), // Anti-replay protection
         }),

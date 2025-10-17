@@ -8,10 +8,10 @@ const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
 export async function POST(request: NextRequest) {
     try {
-        const { email, password } = await request.json();
+        const { identifier, password } = await request.json(); // identifier can be username or email
 
         // Enhanced input validation using AuthErrorHandler
-        if (!email || !password) {
+        if (!identifier || !password) {
             const error = AuthErrorHandler.createError(AuthErrorCode.MISSING_REQUIRED_FIELD);
             return NextResponse.json(
                 { error: error.messageAr, code: error.code },
@@ -19,19 +19,9 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Validate email format
-        const emailValidationError = AuthErrorHandler.createError(AuthErrorCode.INVALID_EMAIL);
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
-            return NextResponse.json(
-                { error: emailValidationError.messageAr, code: emailValidationError.code },
-                { status: emailValidationError.statusCode }
-            );
-        }
-
-        // Get student credentials from Convex
+        // Get student credentials from Convex (supports both username and email)
         const studentData = await convex.query(api.authFunctions.getStudentCredentials, {
-            email: email.toLowerCase().trim(),
+            identifier: identifier.toLowerCase().trim(),
         });
 
         if (!studentData) {

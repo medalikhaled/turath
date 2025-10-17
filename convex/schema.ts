@@ -18,13 +18,15 @@ export default defineSchema({
   // Student Model
   students: defineTable({
     userId: v.id("users"),
+    username: v.string(), // Unique username for student login
     name: v.string(),
     courses: v.array(v.id("courses")),
     enrollmentDate: v.number(),
     lastLoginAt: v.optional(v.number()),
     requiresPasswordChange: v.boolean(),
   })
-    .index("by_user_id", ["userId"]),
+    .index("by_user_id", ["userId"])
+    .index("by_username", ["username"]),
 
   // Course Model
   courses: defineTable({

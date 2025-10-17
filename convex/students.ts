@@ -6,12 +6,14 @@ import { ConvexError } from "./utils";
 export const createStudentWithUser = mutation({
   args: {
     name: v.string(),
+    username: v.string(), // Required username
     email: v.string(),
     password: v.string(), // Already hashed from API route
     courses: v.optional(v.array(v.id("courses"))),
   },
   handler: async (ctx, args) => {
     const email = args.email.toLowerCase().trim();
+    const username = args.username.toLowerCase().trim();
 
     // Check if user already exists
     const existingUser = await ctx.db
@@ -21,6 +23,16 @@ export const createStudentWithUser = mutation({
 
     if (existingUser) {
       throw new ConvexError("User already exists", "USER_EXISTS");
+    }
+
+    // Check if username already exists
+    const existingUsername = await ctx.db
+      .query("students")
+      .withIndex("by_username", (q) => q.eq("username", username))
+      .first();
+
+    if (existingUsername) {
+      throw new ConvexError("Username already exists", "USERNAME_EXISTS");
     }
 
     // Create user account
@@ -36,6 +48,7 @@ export const createStudentWithUser = mutation({
     // Create student profile
     const studentId = await ctx.db.insert("students", {
       userId,
+      username,
       name: args.name,
       courses: args.courses || [],
       enrollmentDate: Date.now(),
@@ -46,6 +59,7 @@ export const createStudentWithUser = mutation({
       success: true,
       studentId,
       userId,
+      username,
     };
   },
 });

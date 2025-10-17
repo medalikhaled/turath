@@ -28,27 +28,41 @@ export const isAdminEmail = query({
   },
 });
 
-// Student credential checking
+// Student credential checking - supports both username and email
 export const getStudentCredentials = query({
-  args: { email: v.string() },
+  args: { identifier: v.string() }, // Can be username or email
   handler: async (ctx, args) => {
-    const email = args.email.toLowerCase().trim();
+    const identifier = args.identifier.toLowerCase().trim();
 
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_email", (q) => q.eq("email", email))
+    // First try to find by username
+    const studentByUsername = await ctx.db
+      .query("students")
+      .withIndex("by_username", (q) => q.eq("username", identifier))
       .first();
 
-    if (!user || user.role !== "student" || !user.isActive) {
-      return null;
+    let user: any = null;
+    let student: any = null;
+
+    if (studentByUsername) {
+      // Found by username, get the user
+      user = await ctx.db.get(studentByUsername.userId);
+      student = studentByUsername;
+    } else {
+      // Try to find by email
+      user = await ctx.db
+        .query("users")
+        .withIndex("by_email", (q) => q.eq("email", identifier))
+        .first();
+
+      if (user && user.role === "student") {
+        student = await ctx.db
+          .query("students")
+          .withIndex("by_user_id", (q) => q.eq("userId", user._id))
+          .first();
+      }
     }
 
-    const student = await ctx.db
-      .query("students")
-      .withIndex("by_user_id", (q) => q.eq("userId", user._id))
-      .first();
-
-    if (!student) {
+    if (!user || user.role !== "student" || !user.isActive || !student) {
       return null;
     }
 
@@ -56,6 +70,7 @@ export const getStudentCredentials = query({
       userId: user._id,
       studentId: student._id,
       email: user.email,
+      username: student.username,
       name: student.name,
       passwordHash: user.passwordHash,
       requiresPasswordChange: student.requiresPasswordChange,

@@ -156,7 +156,7 @@ export default function UnifiedLoginPage() {
     // Clear any existing errors
     clearError()
 
-    const result = await loginStudent({ email, password })
+    const result = await loginStudent({ identifier: email, password })
 
     if (!result.success) {
       // Error handling is done in the useAuth hook with enhanced error display
@@ -230,16 +230,16 @@ export default function UnifiedLoginPage() {
               <form onSubmit={handleEmailSubmit} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="email" className="text-white font-arabic">
-                    البريد الإلكتروني
+                    اسم المستخدم أو البريد الإلكتروني
                   </Label>
                   <Input
                     id="email"
-                    type="email"
+                    type="text"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
                     className="bg-white/10 border-white/20 text-white placeholder:text-white/60"
-                    placeholder="أدخل بريدك الإلكتروني"
+                    placeholder="أدخل اسم المستخدم أو البريد الإلكتروني"
                     dir="ltr"
                   />
                 </div>
