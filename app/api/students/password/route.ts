@@ -19,9 +19,9 @@ export async function POST(request: NextRequest) {
       }
 
       // Validate password strength
-      if (newPassword.length < 8) {
+      if (newPassword.length < 4) {
         return NextResponse.json(
-          { error: 'كلمة المرور يجب أن تكون 8 أحرف على الأقل', code: 'WEAK_PASSWORD' },
+          { error: 'كلمة المرور يجب أن تكون 4 أحرف على الأقل', code: 'WEAK_PASSWORD' },
           { status: 400 }
         );
       }
@@ -46,9 +46,9 @@ export async function POST(request: NextRequest) {
       }
 
       // Validate new password strength
-      if (newPassword.length < 8) {
+      if (newPassword.length < 4) {
         return NextResponse.json(
-          { error: 'كلمة المرور الجديدة يجب أن تكون 8 أحرف على الأقل', code: 'WEAK_PASSWORD' },
+          { error: 'كلمة المرور الجديدة يجب أن تكون 4 أحرف على الأقل', code: 'WEAK_PASSWORD' },
           { status: 400 }
         );
       }

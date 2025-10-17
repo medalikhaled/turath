@@ -483,12 +483,12 @@ export class AuthErrorHandler {
       });
     }
 
-    if (password.length < 8) {
+    if (password.length < 4) {
       return this.createError(AuthErrorCode.WEAK_PASSWORD, {
         validationErrors: [{
           field: 'password',
-          message: 'Password must be at least 8 characters long',
-          messageAr: 'كلمة المرور يجب أن تكون 8 أحرف على الأقل'
+          message: 'Password must be at least 4 characters long',
+          messageAr: 'كلمة المرور يجب أن تكون 4 أحرف على الأقل'
         }]
       });
     }

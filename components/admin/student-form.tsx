@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Loader2Icon, UserIcon, BookOpenIcon } from "lucide-react"
+import { toast } from "sonner"
 
 const studentFormSchema = z.object({
   name: z.string().min(2, "الاسم يجب أن يكون على الأقل حرفين"),
@@ -21,7 +22,7 @@ const studentFormSchema = z.object({
     .max(20, "اسم المستخدم يجب ألا يتجاوز 20 حرف")
     .regex(/^[a-zA-Z0-9_-]+$/, "اسم المستخدم يجب أن يحتوي على أحرف وأرقام فقط"),
   email: z.string().email("البريد الإلكتروني غير صحيح").optional().or(z.literal("")),
-  password: z.string().min(6, "كلمة المرور يجب أن تكون على الأقل 6 أحرف").optional(),
+  password: z.string().min(4, "كلمة المرور يجب أن تكون على الأقل 4 أحرف").optional(),
   courses: z.array(z.string()),
   isActive: z.boolean(),
   sendInvitation: z.boolean(),
@@ -99,16 +100,23 @@ export function StudentForm({ student, onSuccess, onCancel }: StudentFormProps) 
       const allCourseIds = courses?.map(c => c._id) || []
 
       if (student) {
-        // Update existing student
         await updateStudent({
           id: student._id,
           name: data.name,
           courses: allCourseIds, // Assign all courses
         })
+        toast.success("تم تحديث بيانات الطالب بنجاح", {
+          description: `تم تحديث بيانات ${data.name}`,
+          duration: 3000,
+        })
       } else {
         // Create new student via API (which hashes the password)
         if (!data.password) {
-          throw new Error("كلمة المرور مطلوبة")
+          toast.error("كلمة المرور مطلوبة", {
+            description: "يرجى إدخال كلمة مرور للطالب",
+            duration: 4000,
+          })
+          return
         }
         
         const response = await fetch('/api/auth/student/create', {
@@ -128,13 +136,25 @@ export function StudentForm({ student, onSuccess, onCancel }: StudentFormProps) 
         const result = await response.json();
         
         if (!response.ok) {
-          throw new Error(result.error || 'فشل إنشاء الطالب');
+          toast.error("فشل إنشاء حساب الطالب", {
+            description: result.error || "حدث خطأ أثناء إنشاء الحساب",
+            duration: 5000,
+          })
+          return
         }
+
+        toast.success("تم إنشاء حساب الطالب بنجاح", {
+          description: `تم إنشاء حساب ${data.name} (${data.username})`,
+          duration: 3000,
+        })
       }
       onSuccess()
     } catch (error) {
       console.error("Error saving student:", error)
-      alert(error instanceof Error ? error.message : "حدث خطأ أثناء حفظ بيانات الطالب")
+      toast.error("حدث خطأ غير متوقع", {
+        description: error instanceof Error ? error.message : "حدث خطأ أثناء حفظ بيانات الطالب",
+        duration: 5000,
+      })
     } finally {
       setIsSubmitting(false)
     }
@@ -221,7 +241,7 @@ export function StudentForm({ student, onSuccess, onCancel }: StudentFormProps) 
                 id="password"
                 type="password"
                 {...register("password")}
-                placeholder="أدخل كلمة المرور (6 أحرف على الأقل)"
+                placeholder="أدخل كلمة المرور (4 أحرف على الأقل)"
                 dir="ltr"
               />
               {errors.password && (

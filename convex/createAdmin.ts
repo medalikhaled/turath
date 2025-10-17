@@ -30,14 +30,7 @@ export const createAdminUser = mutation({
       updatedAt: Date.now(),
     });
 
-    // Create a corresponding entry in students table (for admin profile data)
-    await ctx.db.insert("students", {
-      userId: adminId,
-      name: args.name,
-      courses: [],
-      enrollmentDate: Date.now(),
-      requiresPasswordChange: false,
-    });
+    // Note: Admins don't need student records since they use different auth flow
 
     return {
       success: true,
@@ -58,25 +51,16 @@ export const getAllAdmins = query({
       .withIndex("by_role", (q) => q.eq("role", "admin"))
       .collect();
 
-    // Get corresponding student records for user admins
-    const adminProfiles = await Promise.all(
-      userAdmins.map(async (user) => {
-        const studentProfile = await ctx.db
-          .query("students")
-          .withIndex("by_user_id", (q) => q.eq("userId", user._id))
-          .first();
-
-        return {
-          id: user._id,
-          email: user.email,
-          name: studentProfile?.name || "Admin User",
-          isActive: user.isActive,
-          createdAt: user.createdAt,
-          enrollmentDate: studentProfile?.enrollmentDate || user.createdAt,
-          source: "users_table",
-        };
-      })
-    );
+    // Map admin users to profile format
+    const adminProfiles = userAdmins.map((user) => ({
+      id: user._id,
+      email: user.email,
+      name: "مدير النظام", // Default admin name
+      isActive: user.isActive,
+      createdAt: user.createdAt,
+      enrollmentDate: user.createdAt,
+      source: "users_table",
+    }));
 
     return adminProfiles;
   },
@@ -96,21 +80,16 @@ export const verifyAdminUser = query({
       .first();
 
     if (userAdmin) {
-      const studentProfile = await ctx.db
-        .query("students")
-        .withIndex("by_user_id", (q) => q.eq("userId", userAdmin._id))
-        .first();
-
       return {
         exists: true,
         source: "users_table",
         admin: {
           id: userAdmin._id,
           email: userAdmin.email,
-          name: studentProfile?.name || "Admin User",
+          name: "مدير النظام",
           isActive: userAdmin.isActive,
           createdAt: userAdmin.createdAt,
-          hasStudentProfile: !!studentProfile,
+          hasStudentProfile: false,
         },
       };
     }
@@ -133,17 +112,8 @@ export const resetAdminSystem = mutation({
       .withIndex("by_role", (q) => q.eq("role", "admin"))
       .collect();
     
-    // Delete associated student profiles first
+    // Delete admin users
     for (const admin of adminUsers) {
-      const studentProfile = await ctx.db
-        .query("students")
-        .withIndex("by_user_id", (q) => q.eq("userId", admin._id))
-        .first();
-      
-      if (studentProfile) {
-        await ctx.db.delete(studentProfile._id);
-      }
-      
       await ctx.db.delete(admin._id);
     }
     
@@ -199,14 +169,7 @@ export const createAdminUserOTP = mutation({
       updatedAt: Date.now(),
     });
 
-    // Create corresponding entry in students table (for admin profile data)
-    await ctx.db.insert("students", {
-      userId: adminId,
-      name: args.name,
-      courses: [],
-      enrollmentDate: Date.now(),
-      requiresPasswordChange: false,
-    });
+    // Note: Admins don't need student records since they use different auth flow
 
     return {
       success: true,
@@ -232,16 +195,6 @@ export const deleteAdminUser = mutation({
       .first();
 
     if (userAdmin) {
-      // Delete corresponding student profile first
-      const studentProfile = await ctx.db
-        .query("students")
-        .withIndex("by_user_id", (q) => q.eq("userId", userAdmin._id))
-        .first();
-      
-      if (studentProfile) {
-        await ctx.db.delete(studentProfile._id);
-      }
-
       // Delete from users table
       await ctx.db.delete(userAdmin._id);
 

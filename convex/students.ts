@@ -123,6 +123,7 @@ export const getStudentsWithCourses = query({
           ...student,
           email: user?.email || "",
           isActive: user?.isActive || false,
+          invitationSent: false, // Placeholder until invitation system is implemented
           courses: courses.filter((c) => c !== null),
         };
       })
@@ -146,8 +147,27 @@ export const updateStudent = mutation({
   },
 });
 
-// Delete student (soft delete)
+// Delete student (permanent delete)
 export const deleteStudent = mutation({
+  args: { id: v.id("students") },
+  handler: async (ctx, args) => {
+    const student = await ctx.db.get(args.id);
+    if (!student) {
+      throw new ConvexError("Student not found", "STUDENT_NOT_FOUND");
+    }
+
+    // Delete user account
+    await ctx.db.delete(student.userId);
+    
+    // Delete student record
+    await ctx.db.delete(args.id);
+
+    return { success: true };
+  },
+});
+
+// Deactivate student (soft delete)
+export const deactivateStudent = mutation({
   args: { id: v.id("students") },
   handler: async (ctx, args) => {
     const student = await ctx.db.get(args.id);
@@ -162,8 +182,24 @@ export const deleteStudent = mutation({
   },
 });
 
-// Deactivate student
-export const deactivateStudent = mutation({
+// Reactivate student
+export const reactivateStudent = mutation({
+  args: { id: v.id("students") },
+  handler: async (ctx, args) => {
+    const student = await ctx.db.get(args.id);
+    if (!student) {
+      throw new ConvexError("Student not found", "STUDENT_NOT_FOUND");
+    }
+
+    // Reactivate user account
+    await ctx.db.patch(student.userId, { isActive: true });
+
+    return { success: true };
+  },
+});
+
+// Old deactivate with reason (keeping for compatibility)
+export const deactivateStudentWithReason = mutation({
   args: {
     studentId: v.id("students"),
     reason: v.optional(v.string()),
@@ -175,21 +211,6 @@ export const deactivateStudent = mutation({
     }
 
     await ctx.db.patch(student.userId, { isActive: false });
-
-    return { success: true };
-  },
-});
-
-// Reactivate student
-export const reactivateStudent = mutation({
-  args: { studentId: v.id("students") },
-  handler: async (ctx, args) => {
-    const student = await ctx.db.get(args.studentId);
-    if (!student) {
-      throw new ConvexError("Student not found", "STUDENT_NOT_FOUND");
-    }
-
-    await ctx.db.patch(student.userId, { isActive: true });
 
     return { success: true };
   },

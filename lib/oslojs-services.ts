@@ -58,7 +58,7 @@ export class PasswordService {
   }
 
   /**
-   * Validate password strength
+   * Validate password strength (simplified for student accounts)
    */
   static validatePasswordStrength(password: string): {
     isValid: boolean;
@@ -68,24 +68,9 @@ export class PasswordService {
     const errors: string[] = [];
     const errorsAr: string[] = [];
 
-    if (password.length < 8) {
-      errors.push("Password must be at least 8 characters long");
-      errorsAr.push("كلمة المرور يجب أن تكون 8 أحرف على الأقل");
-    }
-
-    if (!/[A-Z]/.test(password)) {
-      errors.push("Password must contain at least one uppercase letter");
-      errorsAr.push("كلمة المرور يجب أن تحتوي على حرف كبير واحد على الأقل");
-    }
-
-    if (!/[a-z]/.test(password)) {
-      errors.push("Password must contain at least one lowercase letter");
-      errorsAr.push("كلمة المرور يجب أن تحتوي على حرف صغير واحد على الأقل");
-    }
-
-    if (!/[0-9]/.test(password)) {
-      errors.push("Password must contain at least one number");
-      errorsAr.push("كلمة المرور يجب أن تحتوي على رقم واحد على الأقل");
+    if (password.length < 4) {
+      errors.push("Password must be at least 4 characters long");
+      errorsAr.push("كلمة المرور يجب أن تكون 4 أحرف على الأقل");
     }
 
     return {

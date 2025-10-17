@@ -26,20 +26,15 @@ import { StudentForm } from "./student-form"
 import { formatDistanceToNow } from "date-fns"
 import { ar } from "date-fns/locale"
 
-interface Student {
+// Type for display (from getStudentsWithCourses query)
+interface StudentWithCourses {
     _id: Id<"students">
-    userId?: Id<"users"> // Optional for backward compatibility
+    userId: Id<"users">
+    username: string
     name: string
     email: string
     phone?: string
-    courses: Id<"courses">[]
-    isActive: boolean
-    invitationSent?: boolean // Optional for backward compatibility
-    lastLogin?: number
-    enrollmentDate: number
-    createdAt?: number // Optional for backward compatibility
-    updatedAt?: number // Optional for backward compatibility
-    courseDetails?: Array<{
+    courses: Array<{
         _id: Id<"courses">
         _creationTime: number
         name: string
@@ -49,6 +44,11 @@ interface Student {
         createdAt: number
         students: Id<"students">[]
     } | null>
+    isActive: boolean
+    invitationSent?: boolean
+    lastLogin?: number
+    enrollmentDate: number
+    requiresPasswordChange: boolean
 }
 
 function formatArabicDate(date: number): string {
@@ -62,44 +62,49 @@ function formatArabicDate(date: number): string {
     }
 }
 
-function StudentCard({ student, onEdit, onDelete, onSendInvitation, onManageCourses }: {
-    student: Student
-    onEdit: (student: Student) => void
+function StudentCard({ student, onEdit, onDelete, onDeactivate, onReactivate, onSendInvitation, onManageCourses }: {
+    student: StudentWithCourses
+    onEdit: (student: StudentWithCourses) => void
     onDelete: (studentId: Id<"students">) => void
+    onDeactivate: (studentId: Id<"students">) => void
+    onReactivate: (studentId: Id<"students">) => void
     onSendInvitation: (studentId: Id<"students">) => void
-    onManageCourses: (student: Student) => void
+    onManageCourses: (student: StudentWithCourses) => void
 }) {
     return (
         <Card className="hover:shadow-lg transition-all duration-200 border-2 hover:border-primary/20">
             <CardHeader className="pb-4">
-                <div className="flex items-start justify-between">
-                    <div className="flex-1 min-w-0">
-                        <CardTitle className="arabic-text text-lg mb-2 truncate">{student.name}</CardTitle>
-                        <div className="flex items-center space-x-2 space-x-reverse text-sm text-muted-foreground mb-1">
+                <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0 space-y-1.5">
+                        <CardTitle className="arabic-text text-lg truncate">{student.name}</CardTitle>
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
                             <MailIcon className="h-4 w-4 flex-shrink-0" />
-                            <span className="truncate">{student.email}</span>
+                            <span className="truncate block" dir="ltr">{student.email}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <span className="truncate block" dir="ltr">@{student.username}</span>
                         </div>
                         {student.phone && (
-                            <div className="flex items-center space-x-2 space-x-reverse text-sm text-muted-foreground">
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                 <PhoneIcon className="h-4 w-4 flex-shrink-0" />
-                                <span className="truncate">{student.phone}</span>
+                                <span className="truncate block">{student.phone}</span>
                             </div>
                         )}
                     </div>
-                    <div className="flex flex-col items-end space-y-2 ml-3">
+                    <div className="flex flex-col items-end gap-2 flex-shrink-0">
                         <Badge
                             variant={student.isActive ? "default" : "secondary"}
-                            className="arabic-text text-xs"
+                            className="arabic-text text-xs whitespace-nowrap"
                         >
                             {student.isActive ? "نشط" : "غير نشط"}
                         </Badge>
                         {student.invitationSent ? (
-                            <Badge variant="outline" className="arabic-text text-xs bg-green-50 text-green-700 border-green-200">
+                            <Badge variant="outline" className="arabic-text text-xs bg-green-50 text-green-700 border-green-200 whitespace-nowrap">
                                 <CheckCircleIcon className="h-3 w-3 ml-1" />
                                 تم الإرسال
                             </Badge>
                         ) : (
-                            <Badge variant="outline" className="arabic-text text-xs bg-red-50 text-red-700 border-red-200">
+                            <Badge variant="outline" className="arabic-text text-xs bg-red-50 text-red-700 border-red-200 whitespace-nowrap">
                                 <XCircleIcon className="h-3 w-3 ml-1" />
                                 لم يرسل
                             </Badge>
@@ -109,46 +114,46 @@ function StudentCard({ student, onEdit, onDelete, onSendInvitation, onManageCour
             </CardHeader>
             <CardContent className="space-y-4">
                 <div className="flex items-center justify-between text-sm text-muted-foreground bg-muted/30 p-3 rounded-lg">
-                    <div className="flex items-center space-x-2 space-x-reverse">
-                        <BookOpenIcon className="h-4 w-4" />
-                        <span className="arabic-text font-medium">{student.courses.length} مقرر</span>
+                    <div className="flex items-center gap-2">
+                        <BookOpenIcon className="h-4 w-4 flex-shrink-0" />
+                        <span className="arabic-text font-medium whitespace-nowrap">{student.courses.length} مقرر</span>
                     </div>
-                    <div className="flex items-center space-x-2 space-x-reverse">
-                        <CalendarIcon className="h-4 w-4" />
-                        <span className="text-xs">{formatArabicDate(student.enrollmentDate)}</span>
+                    <div className="flex items-center gap-2">
+                        <CalendarIcon className="h-4 w-4 flex-shrink-0" />
+                        <span className="text-xs whitespace-nowrap">{formatArabicDate(student.enrollmentDate)}</span>
                     </div>
                 </div>
 
-                {student.courseDetails && student.courseDetails.length > 0 && (
-                    <div className="space-y-2">
+                {student.courses && student.courses.length > 0 && (
+                    <div className="space-y-2 -mx-2 px-2">
                         <p className="text-xs text-muted-foreground arabic-text font-medium">المقررات المسجلة:</p>
-                        <div className="flex flex-wrap gap-1">
-                            {student.courseDetails.slice(0, 2).map((course) =>
+                        <div className="flex flex-wrap gap-1.5">
+                            {student.courses.slice(0, 2).map((course) =>
                                 course ? (
-                                    <Badge key={course._id} variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                                    <Badge key={course._id} variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200 whitespace-nowrap">
                                         {course.name}
                                     </Badge>
                                 ) : null
                             )}
-                            {student.courseDetails.length > 2 && (
-                                <Badge variant="outline" className="text-xs arabic-text bg-gray-50 text-gray-700">
-                                    +{student.courseDetails.length - 2} أخرى
+                            {student.courses.length > 2 && (
+                                <Badge variant="outline" className="text-xs arabic-text bg-gray-50 text-gray-700 whitespace-nowrap">
+                                    +{student.courses.length - 2} أخرى
                                 </Badge>
                             )}
                         </div>
                     </div>
                 )}
 
-                <div className="flex items-center gap-2 pt-2">
+                <div className="flex items-center gap-2 pt-2 flex-wrap">
                     {!student.invitationSent && (
                         <Button
                             variant="outline"
                             size="sm"
                             onClick={() => onSendInvitation(student._id)}
-                            className="flex-1 h-9 text-xs"
+                            className="flex-1 min-w-0 h-9 text-xs"
                         >
-                            <MailIcon className="h-3 w-3 ml-1" />
-                            <span className="arabic-text">إرسال دعوة</span>
+                            <MailIcon className="h-3 w-3 ml-1 flex-shrink-0" />
+                            <span className="arabic-text truncate">إرسال دعوة</span>
                         </Button>
                     )}
                     <Button
@@ -156,7 +161,7 @@ function StudentCard({ student, onEdit, onDelete, onSendInvitation, onManageCour
                         size="sm"
                         onClick={() => onManageCourses(student)}
                         title="إدارة المقررات"
-                        className="h-9 w-9 p-0"
+                        className="h-9 w-9 p-0 flex-shrink-0"
                     >
                         <GraduationCapIcon className="h-4 w-4" />
                     </Button>
@@ -165,16 +170,37 @@ function StudentCard({ student, onEdit, onDelete, onSendInvitation, onManageCour
                         size="sm"
                         onClick={() => onEdit(student)}
                         title="تعديل بيانات الطالب"
-                        className="h-9 w-9 p-0"
+                        className="h-9 w-9 p-0 flex-shrink-0"
                     >
                         <EditIcon className="h-4 w-4" />
                     </Button>
+                    {student.isActive ? (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => onDeactivate(student._id)}
+                            className="text-orange-600 hover:text-orange-700 h-9 w-9 p-0 flex-shrink-0"
+                            title="إلغاء تفعيل الطالب"
+                        >
+                            <XCircleIcon className="h-4 w-4" />
+                        </Button>
+                    ) : (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => onReactivate(student._id)}
+                            className="text-green-600 hover:text-green-700 h-9 w-9 p-0 flex-shrink-0"
+                            title="إعادة تفعيل الطالب"
+                        >
+                            <CheckCircleIcon className="h-4 w-4" />
+                        </Button>
+                    )}
                     <Button
                         variant="outline"
                         size="sm"
                         onClick={() => onDelete(student._id)}
-                        className="text-destructive hover:text-destructive h-9 w-9 p-0"
-                        title="حذف الطالب"
+                        className="text-destructive hover:text-destructive h-9 w-9 p-0 flex-shrink-0"
+                        title="حذف الطالب نهائياً"
                     >
                         <TrashIcon className="h-4 w-4" />
                     </Button>
@@ -185,27 +211,29 @@ function StudentCard({ student, onEdit, onDelete, onSendInvitation, onManageCour
 }
 
 export function StudentManagement() {
-    const [selectedStudent, setSelectedStudent] = React.useState<Student | null>(null)
+    const [selectedStudent, setSelectedStudent] = React.useState<StudentWithCourses | null>(null)
     const [isCreateDialogOpen, setIsCreateDialogOpen] = React.useState(false)
     const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false)
     const [isCoursesDialogOpen, setIsCoursesDialogOpen] = React.useState(false)
 
     const students = useQuery(api.students.getStudentsWithCourses)
     const deleteStudent = useMutation(api.students.deleteStudent)
+    const deactivateStudent = useMutation(api.students.deactivateStudent)
+    const reactivateStudent = useMutation(api.students.reactivateStudent)
     const sendInvitation = useMutation(api.students.sendInvitation)
 
-    const handleEdit = (student: Student) => {
+    const handleEdit = (student: StudentWithCourses) => {
         setSelectedStudent(student)
         setIsEditDialogOpen(true)
     }
 
-    const handleManageCourses = (student: Student) => {
+    const handleManageCourses = (student: StudentWithCourses) => {
         setSelectedStudent(student)
         setIsCoursesDialogOpen(true)
     }
 
     const handleDelete = async (studentId: Id<"students">) => {
-        if (confirm("هل أنت متأكد من حذف هذا الطالب؟ سيتم إلغاء تفعيله فقط.")) {
+        if (confirm("هل أنت متأكد من حذف هذا الطالب نهائياً؟ لا يمكن التراجع عن هذا الإجراء!")) {
             try {
                 await deleteStudent({ id: studentId })
             } catch (error) {
@@ -215,17 +243,37 @@ export function StudentManagement() {
         }
     }
 
+    const handleDeactivate = async (studentId: Id<"students">) => {
+        if (confirm("هل تريد إلغاء تفعيل هذا الطالب؟ يمكن إعادة تفعيله لاحقاً.")) {
+            try {
+                await deactivateStudent({ id: studentId })
+            } catch (error) {
+                console.error("Error deactivating student:", error)
+                alert("حدث خطأ أثناء إلغاء تفعيل الطالب")
+            }
+        }
+    }
+
+    const handleReactivate = async (studentId: Id<"students">) => {
+        try {
+            await reactivateStudent({ id: studentId })
+        } catch (error) {
+            console.error("Error reactivating student:", error)
+            alert("حدث خطأ أثناء إعادة تفعيل الطالب")
+        }
+    }
+
     const handleSendInvitation = async (studentId: Id<"students">) => {
         try {
-            const result = await sendInvitation({ studentId })
-            if (result.invitationData) {
-                alert(`تم إرسال الدعوة بنجاح!\n\nبيانات الدخول الجديدة:\nالبريد الإلكتروني: ${result.invitationData.email}\nكلمة المرور المؤقتة: ${result.invitationData.tempPassword}\n\nيرجى مشاركة هذه البيانات مع الطالب.`);
-            } else {
-                alert("تم إرسال الدعوة بنجاح")
-            }
+            await sendInvitation({ studentId })
+            alert("تم إرسال الدعوة بنجاح")
         } catch (error) {
             console.error("Error sending invitation:", error)
-            alert("حدث خطأ أثناء إرسال الدعوة")
+            if (error instanceof Error && error.message.includes("Not implemented")) {
+                alert("ميزة إرسال الدعوات غير متاحة حالياً")
+            } else {
+                alert("حدث خطأ أثناء إرسال الدعوة")
+            }
         }
     }
 
@@ -247,7 +295,7 @@ export function StudentManagement() {
         return (
             <div className="max-w-7xl mx-auto">
                 {/* Header */}
-                <div className="flex items-center justify-between mb-8">
+                {/* <div className="flex items-center justify-between mb-8">
                     <div>
                         <h1 className="text-3xl font-bold arabic-text">إدارة الطلاب</h1>
                         <p className="text-muted-foreground arabic-text">
@@ -255,7 +303,8 @@ export function StudentManagement() {
                         </p>
                     </div>
                     <Skeleton className="h-10 w-32" />
-                </div>
+                </div>  */}
+
 
                 {/* Loading Statistics Cards */}
                 <div className="grid gap-4 md:grid-cols-3 mb-8">
@@ -307,7 +356,7 @@ export function StudentManagement() {
     }
 
     const activeStudents = students.filter(s => s.isActive)
-    const totalEnrollments = students.reduce((total, student) => total + student.courses.length, 0)
+    const totalEnrollments = students.reduce((total, student) => total + student.courses.filter(c => c !== null).length, 0)
     const invitationsSent = students.filter(s => s.invitationSent).length
 
     return (
@@ -402,6 +451,8 @@ export function StudentManagement() {
                             student={student}
                             onEdit={handleEdit}
                             onDelete={handleDelete}
+                            onDeactivate={handleDeactivate}
+                            onReactivate={handleReactivate}
                             onSendInvitation={handleSendInvitation}
                             onManageCourses={handleManageCourses}
                         />
@@ -431,7 +482,10 @@ export function StudentManagement() {
                     </DialogHeader>
                     {selectedStudent && (
                         <StudentForm
-                            student={selectedStudent}
+                            student={{
+                                ...selectedStudent,
+                                courses: selectedStudent.courses.map(c => c?._id).filter((id): id is Id<"courses"> => id !== undefined)
+                            }}
                             onSuccess={handleFormSuccess}
                             onCancel={handleFormCancel}
                         />
