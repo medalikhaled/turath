@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ConvexHttpClient } from 'convex/browser';
 import { api } from '@/convex/_generated/api';
+import {PasswordService} from "@/lib/oslojs-services" 
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
@@ -26,9 +27,12 @@ export async function POST(request: NextRequest) {
         );
       }
 
+
+      const hashedNewPassword = await PasswordService.hashPassword(newPassword);
+
       const result = await convex.mutation(api.students.resetStudentPassword, {
         studentId,
-        newPassword,
+        newPassword: hashedNewPassword,
       });
 
       return NextResponse.json({
@@ -53,23 +57,36 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // Verify current password first
-      const credentials = await convex.mutation(api.students.verifyStudentCredentials, {
-        email,
-        password: currentPassword,
+      // Get student credentials and verify current password
+      const credentials = await convex.query(api.authFunctions.getStudentCredentials, {
+        identifier: email,
       });
 
       if (!credentials) {
+        return NextResponse.json(
+          { error: 'الطالب غير موجود', code: 'STUDENT_NOT_FOUND' },
+          { status: 404 }
+        );
+      }
+
+      // Verify current password using OSLOJS
+      const { PasswordService } = await import('@/lib/oslojs-services');
+      const isPasswordValid = await PasswordService.verifyPassword(currentPassword, credentials.passwordHash || '');
+
+      if (!isPasswordValid) {
         return NextResponse.json(
           { error: 'كلمة المرور الحالية غير صحيحة', code: 'INVALID_CURRENT_PASSWORD' },
           { status: 401 }
         );
       }
 
+      // Hash the new password
+      const hashedNewPassword = await PasswordService.hashPassword(newPassword);
+
       // Update password
       const result = await convex.mutation(api.students.resetStudentPassword, {
-        studentId: credentials.student._id,
-        newPassword,
+        studentId: credentials.studentId,
+        newPassword: hashedNewPassword,
       });
 
       return NextResponse.json({

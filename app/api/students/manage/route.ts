@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const includeInactive = searchParams.get('includeInactive') === 'true';
-    
+
     let students;
     if (includeInactive) {
       students = await convex.query(api.students.getAllStudents);
@@ -49,21 +49,48 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    
+
     // Check if it's bulk creation
     if (Array.isArray(body.students)) {
-      const result = await convex.mutation(api.students.bulkCreateStudentsWithInvitations, {
-        students: body.students,
-        sendInvitations: body.sendInvitations || false,
-      });
+      // Since bulkCreateStudentsWithInvitations is not implemented, handle individually
+      const results = [];
+      const errors = [];
+
+      for (const studentData of body.students) {
+        try {
+          const username = studentData.email.split('@')[0].toLowerCase();
+          const tempPassword = Math.random().toString(36).slice(-8);
+
+          const { PasswordService } = await import('@/lib/oslojs-services');
+          const hashedPassword = await PasswordService.hashPassword(tempPassword);
+
+          const result = await convex.mutation(api.students.createStudentWithUser, {
+            name: studentData.name,
+            username,
+            email: studentData.email.toLowerCase().trim(),
+            password: hashedPassword,
+            courses: studentData.courses || [],
+          });
+
+          results.push({
+            ...result,
+            tempPassword: body.sendInvitations ? tempPassword : undefined,
+          });
+        } catch (error) {
+          errors.push({
+            email: studentData.email,
+            error: error instanceof Error ? error.message : 'Unknown error',
+          });
+        }
+      }
 
       return NextResponse.json({
-        success: result.success,
-        message: `تم إنشاء ${result.created} حساب طالب بنجاح`,
-        created: result.created,
-        errors: result.errors,
-        results: result.results,
-        errorDetails: result.errorDetails,
+        success: true,
+        message: `تم إنشاء ${results.length} حساب طالب بنجاح`,
+        created: results.length,
+        errors: errors.length,
+        results,
+        errorDetails: errors,
       });
     } else {
       // Single student creation
@@ -76,12 +103,20 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const result = await convex.mutation(api.students.createStudentWithInvitation, {
+      // Generate a temporary username and password since createStudentWithInvitation is not implemented
+      const username = email.split('@')[0].toLowerCase(); // Use email prefix as username
+      const tempPassword = Math.random().toString(36).slice(-8); // Generate temp password
+
+      // Hash the password (you might want to use a proper hashing library)
+      const { PasswordService } = await import('@/lib/oslojs-services');
+      const hashedPassword = await PasswordService.hashPassword(tempPassword);
+
+      const result = await convex.mutation(api.students.createStudentWithUser, {
         name,
+        username,
         email: email.toLowerCase().trim(),
-        phone,
+        password: hashedPassword,
         courses: courses || [],
-        sendInvitation: sendInvitation || false,
       });
 
       return NextResponse.json({
@@ -89,13 +124,14 @@ export async function POST(request: NextRequest) {
         message: 'تم إنشاء حساب الطالب بنجاح',
         studentId: result.studentId,
         userId: result.userId,
-        invitationData: result.invitationData,
+        username: result.username,
+        tempPassword: sendInvitation ? tempPassword : undefined, // Only return password if invitation should be sent
       });
     }
 
   } catch (error) {
     console.error('Error creating student(s):', error);
-    
+
     if (error instanceof Error) {
       if (error.message.includes('already exists') || error.message.includes('موجود')) {
         return NextResponse.json(
@@ -130,9 +166,8 @@ export async function PATCH(request: NextRequest) {
     });
 
     return NextResponse.json({
-      success: true,
+      success: result.success,
       message: 'تم تحديث بيانات الطالب بنجاح',
-      studentId: result,
     });
 
   } catch (error) {
@@ -158,7 +193,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    const result = await convex.mutation(api.students.deactivateStudent, {
+    const result = await convex.mutation(api.students.deactivateStudentWithReason, {
       studentId: studentId as any, // Type assertion for API route
       reason: reason || undefined,
     });

@@ -70,17 +70,24 @@ export function UnifiedSchedulingForm({
         }
     }, [editingLessonId, editingMeetingId])
 
-    const activeCourses = courses.filter((course: any) => course.isActive)
-    const existingLessons = lessons.map((lesson: any) => ({
-        _id: lesson._id,
-        courseId: lesson.courseId,
-        title: lesson.title,
-        description: lesson.description,
-        scheduledTime: lesson.scheduledTime,
-        recordingUrl: lesson.recordingUrl,
-        resources: lesson.resources,
-        meetingId: lesson.meetingId,
-    }))
+    const activeCourses = React.useMemo(() => 
+        courses.filter((course: any) => course.isActive), 
+        [courses]
+    )
+    
+    const existingLessons = React.useMemo(() => 
+        lessons.map((lesson: any) => ({
+            _id: lesson._id,
+            courseId: lesson.courseId,
+            title: lesson.title,
+            description: lesson.description,
+            scheduledTime: lesson.scheduledTime,
+            recordingUrl: lesson.recordingUrl,
+            resources: lesson.resources,
+            meetingId: lesson.meetingId,
+        })), 
+        [lessons]
+    )
 
     return (
         <div className="space-y-6">

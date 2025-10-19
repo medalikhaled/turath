@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { WeeklyCalendar } from "./weekly-calendar"
 import { UnifiedSchedulingForm } from "./unified-scheduling-form"
-import { UnifiedCalendarView } from "./unified-calendar-view"
+import { CalendarGridView } from "./calendar-grid-view"
 import { useEffect, useMemo } from "react"
 import {
     CalendarIcon,
@@ -86,15 +86,15 @@ export function ScheduleManagement() {
         )
     }
 
-    const handleCreateSuccess = () => {
+    const handleCreateSuccess = React.useCallback(() => {
         setShowCreateDialog(false)
         setSelectedDate(null)
-    }
+    }, [])
 
-    const handleEditSuccess = () => {
+    const handleEditSuccess = React.useCallback(() => {
         setEditingLesson(null)
         setEditingMeeting(null)
-    }
+    }, [])
 
     const handleEditLesson = (lessonId: Id<"lessons">) => {
         setEditingLesson(lessonId)
@@ -128,10 +128,10 @@ export function ScheduleManagement() {
         }
     }
 
-    const handleDateSelect = (date: Date) => {
+    const handleDateSelect = React.useCallback((date: Date) => {
         setSelectedDate(date)
         setShowCreateDialog(true)
-    }
+    }, [])
 
     const navigateWeek = (direction: 'prev' | 'next') => {
         const weekMs = 7 * 24 * 60 * 60 * 1000
@@ -176,19 +176,30 @@ export function ScheduleManagement() {
     const currentWeekDate = new Date(currentWeekStart)
     const endWeekDate = new Date(endOfWeek)
 
-    const totalEvents = unifiedEvents?.length || 0
-    const todaysEvents = unifiedEvents?.filter(event => {
+    const { totalEvents, todaysEvents, conflictingEvents } = React.useMemo(() => {
+        if (!unifiedEvents) return { totalEvents: 0, todaysEvents: 0, conflictingEvents: 0 }
+        
         const today = new Date()
-        const eventDate = new Date(event.scheduledTime)
-        return eventDate.toDateString() === today.toDateString()
-    }).length || 0
-
-    const conflictingEvents = unifiedEvents?.filter(event => {
-        return unifiedEvents.some(otherEvent =>
-            otherEvent.id !== event.id &&
-            Math.abs(otherEvent.scheduledTime - event.scheduledTime) < (60 * 60 * 1000) // Within 1 hour
-        )
-    }).length || 0
+        const todayStr = today.toDateString()
+        
+        const todayCount = unifiedEvents.filter(event => {
+            const eventDate = new Date(event.scheduledTime)
+            return eventDate.toDateString() === todayStr
+        }).length
+        
+        const conflictCount = unifiedEvents.filter(event => {
+            return unifiedEvents.some(otherEvent =>
+                otherEvent.id !== event.id &&
+                Math.abs(otherEvent.scheduledTime - event.scheduledTime) < (60 * 60 * 1000) // Within 1 hour
+            )
+        }).length
+        
+        return {
+            totalEvents: unifiedEvents.length,
+            todaysEvents: todayCount,
+            conflictingEvents: conflictCount
+        }
+    }, [unifiedEvents])
 
     return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -208,7 +219,12 @@ export function ScheduleManagement() {
                                 إضافة حدث جديد
                             </Button>
                         </DialogTrigger>
-                        <DialogContent className="max-w-6xl max-h-[95vh] overflow-hidden p-0 gap-0" dir="rtl" showCloseButton={false}>
+                        <DialogContent className="max-w-6xl max-h-[95vh] overflow-hidden p-0 gap-0" dir="rtl">
+                            <DialogHeader className="sr-only">
+                                <DialogTitle>
+                                    {editingLesson || editingMeeting ? 'تعديل الحدث' : 'إضافة حدث جديد'}
+                                </DialogTitle>
+                            </DialogHeader>
                             <div className="overflow-y-auto p-8 max-h-[95vh]" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                                 <UnifiedSchedulingForm
                                     selectedDate={selectedDate}
@@ -297,8 +313,8 @@ export function ScheduleManagement() {
                     </Card>
                 </div>
 
-                {/* Unified Calendar */}
-                <UnifiedCalendarView
+                {/* Calendar Grid */}
+                <CalendarGridView
                     currentWeekStart={currentWeekStart}
                     onNavigateWeek={navigateWeek}
                     onGoToCurrentWeek={goToCurrentWeek}

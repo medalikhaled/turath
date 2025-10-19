@@ -69,7 +69,7 @@ export function LessonForm({
 }: LessonFormProps) {
     const [title, setTitle] = React.useState("")
     const [description, setDescription] = React.useState("")
-    const [courseId, setCourseId] = React.useState<Id<"courses"> | "">("")
+    const [courseId, setCourseId] = React.useState<Id<"courses"> | undefined>(undefined)
     const [scheduledDate, setScheduledDate] = React.useState("")
     const [scheduledTime, setScheduledTime] = React.useState("")
     const [isSubmitting, setIsSubmitting] = React.useState(false)
@@ -143,11 +143,16 @@ export function LessonForm({
         return { isValid: true, formatted: formattedLink }
     }, [])
 
+    // Track if we've initialized to prevent loops
+    const [initialized, setInitialized] = React.useState(false)
+
     // Initialize form with existing lesson data or selected date
     React.useEffect(() => {
-        if (!isClient) return
+        if (!isClient || initialized) return
         
-        if (existingLesson) {
+        console.log('LessonForm: Initializing form', { existingLesson: !!existingLesson, lessonId, selectedDate: !!selectedDate })
+        
+        if (existingLesson && lessonId) {
             setTitle(existingLesson.title)
             setDescription(existingLesson.description || "")
             setCourseId(existingLesson.courseId)
@@ -159,21 +164,31 @@ export function LessonForm({
             // If lesson has an associated meeting, enable auto-create and load meeting data
             if (existingLesson.meetingId) {
                 setAutoCreateMeeting(true)
-                // Note: We would need to fetch meeting data here, but for now we'll just enable the toggle
             }
-        } else if (selectedDate) {
+            setInitialized(true)
+        } else if (selectedDate && !lessonId) {
             const dateStr = selectedDate.toISOString().split('T')[0]
             const timeStr = selectedDate.toTimeString().slice(0, 5)
             setScheduledDate(dateStr)
             setScheduledTime(timeStr)
+            setInitialized(true)
+        } else if (!existingLesson && !selectedDate) {
+            // Just mark as initialized for new forms without pre-selected data
+            setInitialized(true)
         }
-    }, [existingLesson, selectedDate, isClient])
+    }, [existingLesson, selectedDate, isClient, lessonId, initialized])
 
-    const getScheduledDateTime = () => {
+    // Reset initialization when lessonId or selectedDate changes (new form)
+    React.useEffect(() => {
+        console.log('LessonForm: Resetting initialization', { lessonId, selectedDate: !!selectedDate })
+        setInitialized(false)
+    }, [lessonId, selectedDate])
+
+    const getScheduledDateTime = React.useCallback(() => {
         if (!scheduledDate || !scheduledTime) return null
         const dateTime = new Date(`${scheduledDate}T${scheduledTime}`)
         return dateTime.getTime()
-    }
+    }, [scheduledDate, scheduledTime])
 
     // Memoize the lesson data to prevent unnecessary re-renders
     const lessonData = React.useMemo(() => 
@@ -205,7 +220,7 @@ export function LessonForm({
         setValidationResult(result)
     }, [scheduledDate, scheduledTime, lessonData, lessonId])
 
-    const checkForConflicts = React.useCallback(() => {
+    const conflicts = React.useMemo(() => {
         const dateTime = getScheduledDateTime()
         if (!dateTime) return []
 
@@ -221,9 +236,7 @@ export function LessonForm({
                 courseId: originalLesson?.courseId
             }
         })
-    }, [lessonData, lessonId, existingLessons, scheduledDate, scheduledTime])
-
-    const conflicts = React.useMemo(() => checkForConflicts(), [checkForConflicts])
+    }, [getScheduledDateTime, lessonData, lessonId, existingLessons])
     const hasConflicts = conflicts.length > 0
     const hasValidationErrors = validationResult.errors.length > 0
     const hasValidationWarnings = validationResult.warnings.length > 0
@@ -308,12 +321,12 @@ export function LessonForm({
                     <BookOpenIcon className="h-4 w-4 ml-1" aria-hidden="true" />
                     المادة الدراسية
                 </Label>
-                <Select value={courseId} onValueChange={(value) => setCourseId(value as Id<"courses">)} required>
+                <Select value={courseId || ""} onValueChange={(value) => setCourseId(value as Id<"courses">)} required>
                     <SelectTrigger id="course" dir="rtl">
                         <SelectValue placeholder="اختر المادة الدراسية" />
                     </SelectTrigger>
                     <SelectContent dir="rtl">
-                        {courses.map((course) => (
+                        {(courses || []).map((course) => (
                             <SelectItem key={course._id} value={course._id}>
                                 <div className="text-right">
                                     <div className="font-medium arabic-text">{course.name}</div>

@@ -1,0 +1,24 @@
+- meetings and lessons/events should be the same 
+
+- ability to upload docs
+
+- calendar view should be a grid rather than list, ofc weekly, in the UI previous days should be disabled 
+
+- remove scrollbars, especially on the dashboard sidebar
+
+- admin can change password for students 
+- fix the news section and add the ability to make the news temporary
+
+- deploy
+
+
+---- 
+
+- auto creation of meeting + passwords
+- too many toasts, and cards, no toasts when logging out 
+- the loading state simpler
+- remove that autherror card, ugly 
+- adding a new lesson in the Calendar errors 
+- improve the design and add some flare 
+- landing page 
+- enrolling in courses 
