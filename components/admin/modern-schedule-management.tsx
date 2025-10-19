@@ -318,7 +318,7 @@ export function ModernScheduleManagement() {
 
                 {/* Event Dialog */}
                 <Dialog open={showEventDialog} onOpenChange={handleDialogClose}>
-                    <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden p-0" dir="rtl">
+                    <DialogContent className="max-w-5xl w-[95vw] sm:w-[90vw] md:w-[85vw] lg:w-[80vw] max-h-[90vh] overflow-hidden p-0" dir="rtl">
                         <DialogHeader className="p-6 pb-0">
                             <DialogTitle className="arabic-text">
                                 {editingEventId ? 'تعديل الحدث' : 'إضافة حدث جديد'}

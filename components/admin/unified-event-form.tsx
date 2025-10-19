@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue
 } from "@/components/ui/select"
-import { Switch } from "@/components/ui/switch"
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2Icon, AlertTriangleIcon } from "lucide-react"
@@ -160,7 +160,7 @@ export function UnifiedEventForm({
     if (!formData.courseId) return "يجب اختيار المادة"
     if (!formData.scheduledDate) return "تاريخ الحدث مطلوب"
     if (!formData.scheduledTime) return "وقت الحدث مطلوب"
-    if (formData.createMeeting && !formData.googleMeetLink.trim()) return "رابط الجلسة مطلوب"
+    if (!formData.googleMeetLink.trim()) return "رابط الجلسة مطلوب"
     return null
   }
 
@@ -189,12 +189,12 @@ export function UnifiedEventForm({
               description: formData.description || undefined,
               scheduledTime
             },
-            meetingData: formData.createMeeting ? {
+            meetingData: {
               googleMeetLink: formData.googleMeetLink,
               password: formData.meetingPassword || undefined,
               duration: formData.duration,
               scheduledTime
-            } : undefined
+            }
           })
         } else {
           await updateMeeting({
@@ -206,19 +206,19 @@ export function UnifiedEventForm({
           })
         }
       } else {
-        // Create new event
+        // Create new event - always with meeting
         if (formData.eventType === "lesson") {
           await createLessonWithMeeting({
             courseId: formData.courseId as Id<"courses">,
             title: formData.title,
             description: formData.description || undefined,
             scheduledTime,
-            createMeeting: formData.createMeeting,
-            meetingData: formData.createMeeting ? {
+            createMeeting: true,
+            meetingData: {
               googleMeetLink: formData.googleMeetLink,
               password: formData.meetingPassword || undefined,
               duration: formData.duration
-            } : undefined
+            }
           })
         } else {
           await createMeeting({
@@ -243,7 +243,7 @@ export function UnifiedEventForm({
   const hasConflicts = conflictCheck?.hasConflict && conflictCheck.conflictingMeetings.length > 0
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-4">
       {error && (
         <Alert variant="destructive">
           <AlertTriangleIcon className="h-4 w-4" />
@@ -260,59 +260,29 @@ export function UnifiedEventForm({
         </Alert>
       )}
 
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Basic Information */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="arabic-text">معلومات أساسية</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {!editingEventId && (
-              <div className="space-y-2">
-                <Label className="arabic-text">نوع الحدث</Label>
-                <Select
-                  value={formData.eventType}
-                  onValueChange={(value) => handleInputChange("eventType", value)}
-                >
-                  <SelectTrigger dir="rtl">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent dir="rtl">
-                    <SelectItem value="lesson">درس</SelectItem>
-                    <SelectItem value="meeting">جلسة</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            <div className="space-y-2">
-              <Label className="arabic-text">العنوان</Label>
+      <Card className="bg-[#0f1729] border-blue-500/30">
+        <CardContent className="p-6 space-y-4">
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="title" className="arabic-text text-white">العنوان</Label>
               <Input
+                id="title"
                 value={formData.title}
                 onChange={(e) => handleInputChange("title", e.target.value)}
                 placeholder="عنوان الحدث"
                 dir="rtl"
+                className="bg-[#1a2332] border-blue-500/30 text-white placeholder:text-gray-500"
+                required
               />
             </div>
 
             <div className="space-y-2">
-              <Label className="arabic-text">الوصف</Label>
-              <Textarea
-                value={formData.description}
-                onChange={(e) => handleInputChange("description", e.target.value)}
-                placeholder="وصف الحدث (اختياري)"
-                dir="rtl"
-                rows={3}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label className="arabic-text">المادة</Label>
+              <Label htmlFor="course" className="arabic-text text-white">المادة</Label>
               <Select
                 value={formData.courseId}
                 onValueChange={(value) => handleInputChange("courseId", value)}
               >
-                <SelectTrigger dir="rtl">
+                <SelectTrigger id="course" dir="rtl" className="bg-[#1a2332] border-blue-500/30 text-white">
                   <SelectValue placeholder="اختر المادة" />
                 </SelectTrigger>
                 <SelectContent dir="rtl">
@@ -324,100 +294,102 @@ export function UnifiedEventForm({
                 </SelectContent>
               </Select>
             </div>
-          </CardContent>
-        </Card>
+          </div>
 
-        {/* Schedule Information */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="arabic-text">معلومات الجدولة</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="description" className="arabic-text text-white">الوصف (اختياري)</Label>
+            <Textarea
+              id="description"
+              value={formData.description}
+              onChange={(e) => handleInputChange("description", e.target.value)}
+              placeholder="وصف الحدث"
+              dir="rtl"
+              rows={2}
+              className="bg-[#1a2332] border-blue-500/30 text-white placeholder:text-gray-500"
+            />
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label className="arabic-text">التاريخ</Label>
+              <Label htmlFor="meet-link" className="arabic-text text-white">رابط Google Meet</Label>
               <Input
+                id="meet-link"
+                value={formData.googleMeetLink}
+                onChange={(e) => handleInputChange("googleMeetLink", e.target.value)}
+                placeholder="https://meet.google.com/..."
+                dir="ltr"
+                className="bg-[#1a2332] border-blue-500/30 text-white placeholder:text-gray-500"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="password" className="arabic-text text-white">كلمة مرور الجلسة (اختياري)</Label>
+              <Input
+                id="password"
+                value={formData.meetingPassword}
+                onChange={(e) => handleInputChange("meetingPassword", e.target.value)}
+                placeholder="كلمة المرور"
+                dir="rtl"
+                className="bg-[#1a2332] border-blue-500/30 text-white placeholder:text-gray-500"
+              />
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="space-y-2">
+              <Label htmlFor="date" className="arabic-text text-white">التاريخ</Label>
+              <Input
+                id="date"
                 type="date"
                 value={formData.scheduledDate}
                 onChange={(e) => handleInputChange("scheduledDate", e.target.value)}
+                className="bg-[#1a2332] border-blue-500/30 text-white"
+                required
               />
             </div>
 
             <div className="space-y-2">
-              <Label className="arabic-text">الوقت</Label>
+              <Label htmlFor="time" className="arabic-text text-white">الوقت</Label>
               <Input
+                id="time"
                 type="time"
                 value={formData.scheduledTime}
                 onChange={(e) => handleInputChange("scheduledTime", e.target.value)}
+                className="bg-[#1a2332] border-blue-500/30 text-white"
+                required
               />
             </div>
 
             <div className="space-y-2">
-              <Label className="arabic-text">المدة (بالدقائق)</Label>
+              <Label htmlFor="duration" className="arabic-text text-white">المدة (دقيقة)</Label>
               <Input
+                id="duration"
                 type="number"
                 value={formData.duration}
                 onChange={(e) => handleInputChange("duration", parseInt(e.target.value))}
                 min="15"
                 max="480"
+                className="bg-[#1a2332] border-blue-500/30 text-white"
+                required
               />
             </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Meeting Information */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between arabic-text">
-            معلومات الجلسة
-            {formData.eventType === "lesson" && (
-              <div className="flex items-center space-x-2">
-                <Label htmlFor="create-meeting" className="text-sm arabic-text">
-                  إنشاء جلسة
-                </Label>
-                <Switch
-                  id="create-meeting"
-                  checked={formData.createMeeting}
-                  onCheckedChange={(checked) => handleInputChange("createMeeting", checked)}
-                />
-              </div>
-            )}
-          </CardTitle>
-        </CardHeader>
-        {(formData.createMeeting || formData.eventType === "meeting") && (
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label className="arabic-text">رابط Google Meet</Label>
-              <Input
-                value={formData.googleMeetLink}
-                onChange={(e) => handleInputChange("googleMeetLink", e.target.value)}
-                placeholder="https://meet.google.com/..."
-                dir="ltr"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label className="arabic-text">كلمة مرور الجلسة (اختياري)</Label>
-              <Input
-                value={formData.meetingPassword}
-                onChange={(e) => handleInputChange("meetingPassword", e.target.value)}
-                placeholder="كلمة المرور"
-                dir="rtl"
-              />
-            </div>
-          </CardContent>
-        )}
+          </div>
+        </CardContent>
       </Card>
 
       {/* Actions */}
       <div className="flex justify-end gap-3">
-        <Button type="button" variant="outline" onClick={onCancel}>
+        <Button type="button" variant="outline" onClick={onCancel} className="arabic-text">
           إلغاء
         </Button>
         <Button 
           type="submit" 
           disabled={isSubmitting}
-          className={cn(hasConflicts && "bg-orange-600 hover:bg-orange-700")}
+          className={cn(
+            "arabic-text",
+            hasConflicts && "bg-orange-600 hover:bg-orange-700"
+          )}
         >
           {isSubmitting && <Loader2Icon className="h-4 w-4 ml-2 animate-spin" />}
           {hasConflicts ? "حفظ مع التعارض" : editingEventId ? "تحديث" : "إنشاء"}
